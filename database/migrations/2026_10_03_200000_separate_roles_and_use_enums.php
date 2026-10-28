@@ -68,10 +68,10 @@ return new class extends Migration
         $types = [
             'gender' => "'male', 'female'",
             'user_status' => "'draft', 'pending', 'active', 'blocked'",
-            'education_level' => "'high_school', 'associate', 'bachelor', 'master', 'doctorate', 'other'",
+            'education_level' => "'primary', 'lower_secondary', 'high_school', 'associate', 'bachelor', 'master', 'doctorate', 'other'",
             'referral_source' => "'website', 'instagram', 'ads', 'friends', 'other'",
-            'user_role' => "'super_admin', 'admin', 'user'",
-            'permission_name' => "'panel.access', 'users.view', 'users.create', 'users.update', 'reports.view', 'registration.manage'",
+            'user_role' => "'super_admin', 'admin', 'user', 'athlete'",
+            'permission_name' => "'panel.access', 'users.view', 'users.create', 'users.update', 'reports.view', 'registration.manage', 'courses.view', 'courses.manage'",
         ];
 
         foreach ($types as $name => $values) {

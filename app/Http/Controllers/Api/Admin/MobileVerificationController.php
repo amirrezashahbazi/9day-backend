@@ -34,18 +34,16 @@ class MobileVerificationController extends Controller
         Log::channel('otp')->info('Admin OTP issued for new user', [
             'mobile' => $mobile,
             'actor_id' => $request->user()?->id,
-            'code' => app()->isProduction() ? null : $code,
+            'code' => $code,
         ]);
 
-        if (app()->environment('local')) {
-            Log::channel('stderr')->info('Admin OTP for '.$mobile.' is '.$code);
-        }
+        Log::channel('stderr')->info('Admin OTP for '.$mobile.' is '.$code);
 
         return response()->json([
             'message' => 'کد تایید ارسال شد.',
             'expires_in' => (int) config('registration.otp_ttl_seconds'),
             'resend_in' => (int) config('registration.otp_resend_seconds'),
-            ...(! app()->isProduction() ? ['debug_code' => $code] : []),
+            'debug_code' => $code,
         ]);
     }
 

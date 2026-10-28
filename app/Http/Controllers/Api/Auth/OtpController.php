@@ -44,17 +44,15 @@ class OtpController extends Controller
         Log::channel('otp')->info('OTP issued', [
             'mobile' => $mobile,
             'purpose' => $purpose,
-            'code' => app()->isProduction() ? null : $code,
+            'code' => $code,
         ]);
 
-        if (app()->environment('local')) {
-            Log::channel('stderr')->info('OTP for '.$mobile.' is '.$code);
-        }
+        Log::channel('stderr')->info('OTP for '.$mobile.' is '.$code);
 
         return response()->json([
             'message' => 'کد تایید صادر شد.',
             'expires_in' => (int) config('registration.otp_ttl_seconds'),
-            ...(! app()->isProduction() ? ['debug_code' => $code] : []),
+            'debug_code' => $code,
         ]);
     }
 

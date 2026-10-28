@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\AccessControlWebhookController;
+use App\Http\Controllers\Api\Admin\AccessControlLogController as AdminAccessControlLogController;
 use App\Http\Controllers\Api\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSettingController;
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
@@ -18,6 +20,9 @@ Route::prefix('auth')->group(function () {
     Route::post('staff/login', [StaffAuthController::class, 'login'])->middleware('throttle:staff-login');
 });
 
+Route::post('webhooks/access-control', AccessControlWebhookController::class)
+    ->middleware('throttle:access-control-webhook');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [SessionController::class, 'me']);
     Route::post('auth/logout', [SessionController::class, 'logout']);
@@ -30,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:panel.access')->prefix('admin')->group(function () {
         Route::get('stats', [AdminUserController::class, 'stats']);
         Route::get('reports', [AdminUserController::class, 'report']);
+        Route::get('access-control-logs', [AdminAccessControlLogController::class, 'index']);
         Route::get('users', [AdminUserController::class, 'index']);
         Route::post('users', [AdminUserController::class, 'store']);
         Route::post('users/mobile/otp', [AdminMobileVerificationController::class, 'send'])->middleware('throttle:otp');

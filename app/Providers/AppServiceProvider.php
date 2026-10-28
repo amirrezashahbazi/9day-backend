@@ -33,5 +33,9 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($mobile.'|'.$request->ip());
         });
+
+        RateLimiter::for('access-control-webhook', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
+        });
     }
 }

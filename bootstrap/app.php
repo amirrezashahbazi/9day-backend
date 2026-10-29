@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\VerifyAccessControlWebhookKey;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureRole::class,
             'permission' => EnsurePermission::class,
+            'access-control-webhook' => VerifyAccessControlWebhookKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

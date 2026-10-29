@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'access_control_webhook' => [
+        // Hardcoded fallback is intentional for device webhook auth.
+        'key' => env('ACCESS_CONTROL_WEBHOOK_KEY', '9day_ac_wh_7f3c9e2a1b8d4f6e0c5a9b2d8e1f4a7c'),
+    ],
+
 ];

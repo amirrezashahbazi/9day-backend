@@ -21,7 +21,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::post('webhooks/access-control', AccessControlWebhookController::class)
-    ->middleware('throttle:access-control-webhook');
+    ->middleware(['access-control-webhook', 'throttle:access-control-webhook']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [SessionController::class, 'me']);

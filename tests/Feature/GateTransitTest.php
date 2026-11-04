@@ -113,6 +113,23 @@ class GateTransitTest extends TestCase
         $this->assertSame(3, GateTransit::query()->where('allowed', false)->count());
     }
 
+    public function test_card_with_leading_zeros_still_matches_and_decrements(): void
+    {
+        $course = $this->makeCourse(4);
+        $user = $this->makeAthlete('005957224');
+        app(CourseEnrollmentService::class)->enroll($user, $course, 4, null);
+
+        $result = app(GateTransitService::class)->process([
+            'enrollid' => '5957224',
+            'username' => 'device',
+        ], '127.0.0.1');
+
+        $this->assertTrue($result['allowed']);
+        $this->assertSame($user->id, $result['user_id']);
+        $this->assertSame(3, $result['sessions_remaining']);
+        $this->assertSame('دوره تست گیت', $result['course_title']);
+    }
+
     public function test_unknown_card_is_denied_and_logged(): void
     {
         $result = app(GateTransitService::class)->process(['CardNo' => '99998888'], '10.0.0.1');

@@ -43,11 +43,22 @@ class GateTransitService
             $user = null;
             if ($userId) {
                 $user = User::query()->whereKey($userId)->lockForUpdate()->first();
-            } elseif (is_string($cardNumber) && $cardNumber !== '') {
+            }
+            if (! $user && is_string($cardNumber) && $cardNumber !== '') {
                 $user = User::query()
                     ->where('access_card_number', $cardNumber)
                     ->lockForUpdate()
                     ->first();
+            }
+            if (! $user && is_string($cardNumber) && $cardNumber !== '') {
+                $canonical = AccessControlPayload::canonicalCard($cardNumber);
+                if ($canonical !== '0') {
+                    $user = User::query()
+                        ->whereRaw("ltrim(access_card_number, '0') = ?", [$canonical])
+                        ->orderByDesc('id')
+                        ->lockForUpdate()
+                        ->first();
+                }
             }
 
             if ($user) {

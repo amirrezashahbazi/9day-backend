@@ -26,6 +26,8 @@ class User extends Authenticatable
     protected $fillable = [
         'file_number',
         'mobile',
+        'access_card_number',
+        'access_card_enrolled_at',
         'password',
         'status',
         'registration_step',
@@ -97,6 +99,7 @@ class User extends Authenticatable
             'education_level' => EducationLevel::class,
             'referral_source' => ReferralSource::class,
             'registration_step' => 'integer',
+            'access_card_enrolled_at' => 'datetime',
             'phone_verified_at' => 'datetime',
             'registration_completed_at' => 'datetime',
             'access_granted_at' => 'datetime',

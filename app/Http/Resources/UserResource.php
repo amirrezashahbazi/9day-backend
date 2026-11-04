@@ -15,6 +15,8 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'file_number' => $this->file_number,
             'mobile' => $this->mobile,
+            'access_card_number' => $this->access_card_number,
+            'access_card_enrolled_at' => $this->access_card_enrolled_at?->toIso8601String(),
             'roles' => $this->roles->map(fn ($role) => $role->name instanceof \App\Enums\UserRole ? $role->name->value : (string) $role->name)->values(),
             'permissions' => $this->permissionNames(),
             'direct_permissions' => $this->permissions->map(fn ($permission) => $permission->name instanceof \App\Enums\Permission ? $permission->name->value : (string) $permission->name)->values(),

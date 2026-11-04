@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\AccessControlWebhookController;
+use App\Http\Controllers\Api\Admin\AccessCardController as AdminAccessCardController;
 use App\Http\Controllers\Api\Admin\AccessControlLogController as AdminAccessControlLogController;
 use App\Http\Controllers\Api\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSettingController;
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
 use App\Http\Controllers\Api\Admin\MobileVerificationController as AdminMobileVerificationController;
+use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Auth\OtpController;
 use App\Http\Controllers\Api\Auth\SessionController;
@@ -48,6 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereNumber('user')
             ->whereNumber('step');
         Route::patch('users/{user}/access', [AdminUserController::class, 'updateAccess']);
+        Route::post('users/{user}/access-card', [AdminAccessCardController::class, 'enroll'])->whereNumber('user');
+        Route::get('site-settings', [AdminSiteSettingController::class, 'show']);
+        Route::put('site-settings', [AdminSiteSettingController::class, 'update']);
 
         Route::middleware('permission:courses.view')->group(function () {
             Route::get('courses', [AdminCourseController::class, 'index']);

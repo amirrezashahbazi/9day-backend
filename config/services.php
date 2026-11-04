@@ -40,4 +40,11 @@ return [
         'key' => env('ACCESS_CONTROL_WEBHOOK_KEY', '9day_ac_wh_7f3c9e2a1b8d4f6e0c5a9b2d8e1f4a7c'),
     ],
 
+    'access_control_device' => [
+        'base_url' => env('ACCESS_CONTROL_DEVICE_URL', 'http://109.122.249.11:7113'),
+        'set_user_path' => '/Api/V1/Command/SetUserInfo',
+        'timeout' => (int) env('ACCESS_CONTROL_DEVICE_TIMEOUT', 60),
+        'backupnum' => 11,
+    ],
+
 ];

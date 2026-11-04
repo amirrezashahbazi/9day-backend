@@ -13,6 +13,7 @@ class SiteSettingController extends Controller
     {
         return response()->json([
             'access_control_device_serial' => AppSetting::getString('access_control_device_serial', 'AYSC01015467'),
+            'access_control_display_seconds' => AppSetting::getInt('access_control_display_seconds', 1),
         ]);
     }
 
@@ -23,9 +24,13 @@ class SiteSettingController extends Controller
             $request->string('access_control_device_serial')->toString(),
         );
 
+        $seconds = min(10, max(1, (int) $request->integer('access_control_display_seconds')));
+        AppSetting::putValue('access_control_display_seconds', (string) $seconds);
+
         return response()->json([
             'message' => 'تنظیمات سایت ذخیره شد.',
             'access_control_device_serial' => AppSetting::getString('access_control_device_serial'),
+            'access_control_display_seconds' => AppSetting::getInt('access_control_display_seconds', 1),
         ]);
     }
 }

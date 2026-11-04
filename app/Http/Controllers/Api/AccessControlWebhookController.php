@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Events\AccessControlLogReceived;
 use App\Http\Controllers\Controller;
 use App\Models\AccessControlLog;
+use App\Support\AccessControlPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,12 @@ class AccessControlWebhookController extends Controller
         if ($payload === []) {
             $payload = $request->all();
         }
+
+        if (! is_array($payload)) {
+            $payload = ['raw' => $payload];
+        }
+
+        $payload['resolved'] = AccessControlPayload::resolve($payload);
 
         $log = AccessControlLog::query()->create([
             'payload' => $payload,

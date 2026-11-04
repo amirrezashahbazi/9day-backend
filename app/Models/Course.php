@@ -26,6 +26,7 @@ class Course extends Model
         'max_age',
         'fee',
         'capacity',
+        'sessions_count',
         'enrollments_count',
         'created_by',
     ];
@@ -42,8 +43,14 @@ class Course extends Model
             'max_age' => 'integer',
             'fee' => 'integer',
             'capacity' => 'integer',
+            'sessions_count' => 'integer',
             'enrollments_count' => 'integer',
         ];
+    }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class);
     }
 
     public function type(): BelongsTo

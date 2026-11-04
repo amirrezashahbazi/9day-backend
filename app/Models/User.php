@@ -205,6 +205,18 @@ class User extends Authenticatable
         return $this->hasAnyRole(UserRole::members());
     }
 
+    public function courseEnrollments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
+
+    public function activeCourseEnrollment(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CourseEnrollment::class)
+            ->where('status', \App\Enums\EnrollmentStatus::Active->value)
+            ->latestOfMany();
+    }
+
     public function primaryRole(): ?string
     {
         $this->loadMissing('roles');

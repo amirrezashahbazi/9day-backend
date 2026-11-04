@@ -1,0 +1,178 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\EnrollmentStatus;
+use App\Enums\GateTransitReason;
+use App\Enums\UserStatus;
+use App\Models\AccessControlLog;
+use App\Models\CourseEnrollment;
+use App\Models\GateTransit;
+use App\Models\User;
+use App\Support\AccessControlPayload;
+use Illuminate\Support\Facades\DB;
+
+class GateTransitService
+{
+    /**
+     * Process one access-control swipe with atomic remaining-session update.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array{
+     *   log: AccessControlLog,
+     *   transit: GateTransit,
+     *   allowed: bool,
+     *   reason: string,
+     *   user_name: ?string,
+     *   card_number: ?string,
+     *   course_title: ?string,
+     *   sessions_remaining: ?int,
+     *   user_id: ?int,
+     *   enrollment_id: ?int,
+     *   course_id: ?int
+     * }
+     */
+    public function process(array $payload, ?string $sourceIp = null): array
+    {
+        $resolved = AccessControlPayload::resolve($payload);
+        $cardNumber = $resolved['card_number'] ?? null;
+        $userId = $resolved['user_id'] ?? null;
+        $userName = $resolved['user_name'] ?? null;
+
+        return DB::transaction(function () use ($payload, $sourceIp, $cardNumber, $userId, $userName, $resolved) {
+            $user = null;
+            if ($userId) {
+                $user = User::query()->whereKey($userId)->lockForUpdate()->first();
+            } elseif (is_string($cardNumber) && $cardNumber !== '') {
+                $user = User::query()
+                    ->where('access_card_number', $cardNumber)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if ($user) {
+                $name = trim(collect([$user->first_name, $user->last_name])->filter()->implode(' '));
+                $userName = $name !== '' ? $name : $user->mobile;
+                $cardNumber = $cardNumber ?: $user->access_card_number;
+            }
+
+            $allowed = false;
+            $reason = GateTransitReason::UnknownCard;
+            $enrollment = null;
+            $sessionsRemainingAfter = null;
+            $courseTitle = null;
+
+            if (! $user) {
+                $reason = GateTransitReason::UnknownCard;
+            } elseif ($user->status === UserStatus::Blocked) {
+                $reason = GateTransitReason::UserBlocked;
+            } else {
+                $enrollment = CourseEnrollment::query()
+                    ->with('course')
+                    ->where('user_id', $user->id)
+                    ->where('status', EnrollmentStatus::Active->value)
+                    ->lockForUpdate()
+                    ->orderByDesc('id')
+                    ->first();
+
+                if (! $enrollment) {
+                    $reason = GateTransitReason::NoEnrollment;
+                } elseif ($enrollment->sessions_remaining < 1) {
+                    $enrollment->forceFill([
+                        'status' => EnrollmentStatus::Exhausted,
+                        'closed_at' => now(),
+                    ])->save();
+                    $reason = GateTransitReason::Exhausted;
+                    $courseTitle = $enrollment->course?->title;
+                    $sessionsRemainingAfter = 0;
+                } else {
+                    // Atomic conditional decrement — refuse if another request already consumed last session.
+                    $affected = CourseEnrollment::query()
+                        ->whereKey($enrollment->id)
+                        ->where('status', EnrollmentStatus::Active->value)
+                        ->where('sessions_remaining', '>', 0)
+                        ->update([
+                            'sessions_remaining' => DB::raw('sessions_remaining - 1'),
+                            'updated_at' => now(),
+                        ]);
+
+                    if ($affected !== 1) {
+                        $enrollment->refresh();
+                        $reason = GateTransitReason::Exhausted;
+                        $courseTitle = $enrollment->relationLoaded('course')
+                            ? $enrollment->course?->title
+                            : CourseEnrollment::query()->with('course')->find($enrollment->id)?->course?->title;
+                        $sessionsRemainingAfter = (int) $enrollment->sessions_remaining;
+                    } else {
+                        $enrollment->refresh();
+                        if ($enrollment->sessions_remaining === 0) {
+                            $enrollment->forceFill([
+                                'status' => EnrollmentStatus::Exhausted,
+                                'closed_at' => now(),
+                            ])->save();
+                        }
+
+                        if (! $enrollment->relationLoaded('course')) {
+                            $enrollment->load('course');
+                        }
+
+                        $allowed = true;
+                        $reason = GateTransitReason::Allowed;
+                        $sessionsRemainingAfter = (int) $enrollment->sessions_remaining;
+                        $courseTitle = $enrollment->course?->title;
+                    }
+                }
+
+                if ($enrollment && ! $enrollment->relationLoaded('course')) {
+                    $enrollment->load('course');
+                    $courseTitle = $courseTitle ?: $enrollment->course?->title;
+                }
+            }
+
+            $payload['resolved'] = array_merge($resolved, [
+                'user_id' => $user?->id,
+                'user_name' => $userName,
+                'card_number' => $cardNumber,
+                'allowed' => $allowed,
+                'reason' => $reason->value,
+                'course_title' => $courseTitle,
+                'sessions_remaining' => $sessionsRemainingAfter,
+                'enrollment_id' => $enrollment?->id,
+                'course_id' => $enrollment?->course_id,
+            ]);
+
+            $log = AccessControlLog::query()->create([
+                'payload' => $payload,
+                'source_ip' => $sourceIp,
+            ]);
+
+            $transit = GateTransit::query()->create([
+                'user_id' => $user?->id,
+                'enrollment_id' => $enrollment?->id,
+                'course_id' => $enrollment?->course_id,
+                'access_control_log_id' => $log->id,
+                'card_number' => $cardNumber,
+                'allowed' => $allowed,
+                'reason' => $reason,
+                'sessions_remaining_after' => $sessionsRemainingAfter,
+                'course_title' => $courseTitle,
+                'user_name' => $userName,
+                'source_ip' => $sourceIp,
+            ]);
+
+            return [
+                'log' => $log,
+                'transit' => $transit,
+                'allowed' => $allowed,
+                'reason' => $reason->value,
+                'user_name' => $userName,
+                'card_number' => $cardNumber,
+                'course_title' => $courseTitle,
+                'sessions_remaining' => $sessionsRemainingAfter,
+                'user_id' => $user?->id,
+                'enrollment_id' => $enrollment?->id,
+                'course_id' => $enrollment?->course_id,
+            ];
+        });
+    }
+}

@@ -32,6 +32,7 @@ class UpdateCourseRequest extends FormRequest
             'max_age' => ['nullable', 'integer', 'min:1', 'max:100', 'gte:min_age'],
             'fee' => ['required', 'integer', 'min:0'],
             'capacity' => ['required', 'integer', 'min:1', 'max:100000'],
+            'sessions_count' => ['required', 'integer', 'min:1', 'max:500'],
             'primary_index' => ['nullable', 'integer', 'min:0', 'max:3'],
             'banner_order' => ['nullable', 'string'],
             'keep_banner_ids' => ['nullable', 'array', 'max:4'],

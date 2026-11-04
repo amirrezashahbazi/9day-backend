@@ -37,6 +37,7 @@ class CourseResource extends JsonResource
             'max_age' => $this->max_age,
             'fee' => $this->fee,
             'capacity' => $this->capacity,
+            'sessions_count' => $this->sessions_count,
             'enrollments_count' => $this->enrollments_count,
             'banners' => $this->whenLoaded('banners', fn () => $this->banners->map(fn ($banner) => [
                 'id' => $banner->id,

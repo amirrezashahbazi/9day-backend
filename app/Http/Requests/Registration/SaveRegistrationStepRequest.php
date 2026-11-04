@@ -135,11 +135,13 @@ class SaveRegistrationStepRequest extends FormRequest
                 'district_id' => ['nullable', 'integer', Rule::exists('districts', 'id')->whereNull('deleted_at')],
             ],
             3 => [
-                'course_swimming' => ['required', 'boolean'],
-                'course_water_polo' => ['required', 'boolean'],
-                'course_diving' => ['required', 'boolean'],
-                'course_private' => ['required', 'boolean'],
-                'course_semi_private' => ['required', 'boolean'],
+                'course_id' => ['required', 'integer', Rule::exists('courses', 'id')->whereNull('deleted_at')],
+                'sessions_total' => ['nullable', 'integer', 'min:1', 'max:500'],
+                'course_swimming' => ['sometimes', 'boolean'],
+                'course_water_polo' => ['sometimes', 'boolean'],
+                'course_diving' => ['sometimes', 'boolean'],
+                'course_private' => ['sometimes', 'boolean'],
+                'course_semi_private' => ['sometimes', 'boolean'],
             ],
             4 => [
                 'referral_source' => ['required', Rule::enum(ReferralSource::class)],
@@ -191,7 +193,8 @@ class SaveRegistrationStepRequest extends FormRequest
             'city_id.required' => 'شهر را انتخاب کنید.',
             'city_id.exists' => 'شهر معتبر نیست.',
             'district_id.exists' => 'منطقه معتبر نیست.',
-            'course_swimming.required' => 'حداقل یک کلاس را انتخاب کنید.',
+            'course_id.required' => 'دوره را انتخاب کنید.',
+            'course_id.exists' => 'دوره معتبر نیست.',
             'referral_source.required' => 'نحوه آشنایی را انتخاب کنید.',
             'referral_other.required' => 'سایر روش آشنایی را بنویسید.',
             'has_illness.required' => 'وضعیت بیماری را مشخص کنید.',
@@ -232,10 +235,6 @@ class SaveRegistrationStepRequest extends FormRequest
                 }
             }
 
-            if ($step === 3 && ! $this->hasSelectedCourse()) {
-                $validator->errors()->add('course_swimming', 'حداقل یک کلاس را انتخاب کنید.');
-            }
-
             if ($step === 5 && $this->boolean('has_illness') && ! $this->hasSelectedIllness()) {
                 $validator->errors()->add('illness_skin', 'نوع بیماری را انتخاب کنید.');
             }
@@ -263,17 +262,6 @@ class SaveRegistrationStepRequest extends FormRequest
         }
 
         return $rules;
-    }
-
-    private function hasSelectedCourse(): bool
-    {
-        foreach (['course_swimming', 'course_water_polo', 'course_diving', 'course_private', 'course_semi_private'] as $field) {
-            if ($this->boolean($field)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private function hasSelectedIllness(): bool

@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\AccessControlWebhookController;
+use App\Http\Controllers\Api\CourseCatalogController;
 use App\Http\Controllers\Api\Admin\AccessCardController as AdminAccessCardController;
 use App\Http\Controllers\Api\Admin\AccessControlLogController as AdminAccessControlLogController;
 use App\Http\Controllers\Api\Admin\CourseController as AdminCourseController;
+use App\Http\Controllers\Api\Admin\CourseEnrollmentController as AdminCourseEnrollmentController;
 use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSettingController;
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
 use App\Http\Controllers\Api\Admin\MobileVerificationController as AdminMobileVerificationController;
@@ -31,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('locations', [LocationController::class, 'index']);
     Route::get('locations/cities/{city}/districts', [LocationController::class, 'districts'])->whereNumber('city');
+    Route::get('courses/catalog', [CourseCatalogController::class, 'index']);
     Route::get('registration', [RegistrationController::class, 'show']);
     Route::put('registration/steps/{step}', [RegistrationController::class, 'update'])->whereNumber('step');
 
@@ -51,6 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
             ->whereNumber('step');
         Route::patch('users/{user}/access', [AdminUserController::class, 'updateAccess']);
         Route::post('users/{user}/access-card', [AdminAccessCardController::class, 'enroll'])->whereNumber('user');
+        Route::get('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'index'])->whereNumber('user');
+        Route::post('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'store'])->whereNumber('user');
         Route::get('site-settings', [AdminSiteSettingController::class, 'show']);
         Route::put('site-settings', [AdminSiteSettingController::class, 'update']);
 

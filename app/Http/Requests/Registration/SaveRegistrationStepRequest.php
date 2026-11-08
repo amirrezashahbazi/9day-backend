@@ -121,6 +121,7 @@ class SaveRegistrationStepRequest extends FormRequest
                 'father_name' => $name,
                 'issued_from' => $name,
                 'national_code' => ['required', 'string', new IranianNationalCode, Rule::unique('users', 'national_code')->ignore($this->subject()->id)->whereNull('deleted_at')],
+                'federation_inquiry' => ['sometimes', 'boolean'],
                 'birth_date' => ['required', 'date_format:Y-m-d', 'after:1920-01-01', 'before:today'],
                 'gender' => ['required', Rule::enum(Gender::class)],
             ],

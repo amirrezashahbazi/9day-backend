@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\AccessCardController as AdminAccessCardContro
 use App\Http\Controllers\Api\Admin\AccessControlLogController as AdminAccessControlLogController;
 use App\Http\Controllers\Api\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Api\Admin\CourseEnrollmentController as AdminCourseEnrollmentController;
+use App\Http\Controllers\Api\Admin\FederationInquiryController as AdminFederationInquiryController;
 use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSettingController;
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
 use App\Http\Controllers\Api\Admin\MobileVerificationController as AdminMobileVerificationController;
@@ -43,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('access-control-logs', [AdminAccessControlLogController::class, 'index']);
         Route::get('users', [AdminUserController::class, 'index']);
         Route::post('users', [AdminUserController::class, 'store']);
+        Route::post('federation/membership-status', AdminFederationInquiryController::class);
         Route::post('users/mobile/otp', [AdminMobileVerificationController::class, 'send'])->middleware('throttle:otp');
         Route::post('users/mobile/verify', [AdminMobileVerificationController::class, 'confirm'])->middleware('throttle:otp-verify');
         Route::post('users/assign-roles', [AdminUserController::class, 'assignRoles']);

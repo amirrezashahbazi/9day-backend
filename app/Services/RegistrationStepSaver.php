@@ -11,13 +11,15 @@ use Illuminate\Support\Facades\Log;
 
 class RegistrationStepSaver
 {
-    public function __construct(private CourseEnrollmentService $enrollments)
-    {
+    public function __construct(
+        private CourseEnrollmentService $enrollments,
+        private FederationMembershipClient $federation,
+    ) {
     }
 
     public function save(User $user, int $step, Request $request): User
     {
-        $data = $request->safe()->except(['signature_confirmed', 'terms_accepted', 'course_id', 'sessions_total']);
+        $data = $request->safe()->except(['signature_confirmed', 'terms_accepted', 'course_id', 'sessions_total', 'federation_inquiry']);
 
         if ($step === 2) {
             $city = City::query()->find($data['city_id'] ?? null);
@@ -55,6 +57,15 @@ class RegistrationStepSaver
         if ($step === 3) {
             foreach (['course_swimming', 'course_water_polo', 'course_diving', 'course_private', 'course_semi_private'] as $flag) {
                 $data[$flag] = (bool) ($data[$flag] ?? false);
+            }
+        }
+
+        if ($step === 1 && $request->boolean('federation_inquiry')) {
+            $snapshot = $this->federation->cached((string) $request->input('national_code'));
+            $user->federation_inquiry = true;
+            $user->federation_inquired_at = now();
+            if ($snapshot) {
+                $user->federation_snapshot = $snapshot;
             }
         }
 

@@ -40,6 +40,9 @@ class User extends Authenticatable
         'father_name',
         'issued_from',
         'national_code',
+        'federation_inquiry',
+        'federation_inquired_at',
+        'federation_snapshot',
         'birth_date',
         'gender',
         'education_level',
@@ -94,6 +97,9 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'federation_inquiry' => 'boolean',
+            'federation_inquired_at' => 'datetime',
+            'federation_snapshot' => 'array',
             'status' => UserStatus::class,
             'gender' => Gender::class,
             'education_level' => EducationLevel::class,

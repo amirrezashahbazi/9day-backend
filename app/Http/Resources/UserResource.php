@@ -31,6 +31,8 @@ class UserResource extends JsonResource
             'father_name' => $this->father_name,
             'issued_from' => $this->issued_from,
             'national_code' => $this->national_code,
+            'federation_inquiry' => (bool) $this->federation_inquiry,
+            'federation_inquired_at' => $this->federation_inquired_at?->toIso8601String(),
             'birth_date' => $this->birth_date?->format('Y-m-d'),
             'gender' => $this->gender?->value,
             'education_level' => $this->education_level?->value,

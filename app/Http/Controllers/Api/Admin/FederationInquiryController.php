@@ -27,8 +27,16 @@ class FederationInquiryController extends Controller
             ], 422);
         }
 
+        if (! ($result['found'] ?? false)) {
+            return response()->json([
+                'message' => 'این کد ملی در فدراسیون ثبت نشده است.',
+                'found' => false,
+            ]);
+        }
+
         return response()->json([
             'message' => 'اطلاعات فدراسیون دریافت شد.',
+            'found' => true,
             'inquiry' => $result,
         ]);
     }

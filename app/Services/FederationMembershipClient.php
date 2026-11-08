@@ -37,10 +37,15 @@ class FederationMembershipClient
 
         $body = $response->json();
         if (! is_array($body) || ! is_array($body['user'] ?? null)) {
-            throw new RuntimeException('برای این کد ملی در فدراسیون رکوردی پیدا نشد.');
+            return [
+                'found' => false,
+                'active' => (bool) (is_array($body) ? ($body['active'] ?? false) : false),
+                'expires_at' => is_array($body) ? ($body['expires_at'] ?? null) : null,
+            ];
         }
 
         $mapped = $this->map($body);
+        $mapped['found'] = true;
         Cache::put($this->cacheKey($nationalCode), $mapped, now()->addHours(6));
 
         return $mapped;

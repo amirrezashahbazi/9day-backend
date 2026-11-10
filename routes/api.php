@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSetting
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
 use App\Http\Controllers\Api\Admin\MobileVerificationController as AdminMobileVerificationController;
 use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
+use App\Http\Controllers\Api\Admin\TimeSlotController as AdminTimeSlotController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Auth\OtpController;
 use App\Http\Controllers\Api\Auth\SessionController;
@@ -65,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('courses', [AdminCourseController::class, 'index']);
             Route::get('courses/{course}', [AdminCourseController::class, 'show'])->whereNumber('course');
             Route::get('course-settings', [AdminCourseSettingController::class, 'show']);
+            Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
             Route::get('{taxonomyTable}', [AdminCourseTaxonomyController::class, 'index'])
                 ->whereIn('taxonomyTable', ['course_types', 'course_fields', 'course_levels']);
         });
@@ -75,6 +77,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('courses/{course}', [AdminCourseController::class, 'update'])->whereNumber('course');
             Route::delete('courses/{course}', [AdminCourseController::class, 'destroy'])->whereNumber('course');
             Route::put('course-settings', [AdminCourseSettingController::class, 'update']);
+            Route::post('time-slots', [AdminTimeSlotController::class, 'store']);
+            Route::post('time-slots/bulk-delete', [AdminTimeSlotController::class, 'destroyMany']);
+            Route::patch('time-slots/{timeSlot}', [AdminTimeSlotController::class, 'update'])->whereNumber('timeSlot');
+            Route::delete('time-slots/{timeSlot}', [AdminTimeSlotController::class, 'destroy'])->whereNumber('timeSlot');
             Route::post('{taxonomyTable}', [AdminCourseTaxonomyController::class, 'store'])
                 ->whereIn('taxonomyTable', ['course_types', 'course_fields', 'course_levels']);
             Route::post('{taxonomyTable}/bulk-delete', [AdminCourseTaxonomyController::class, 'destroyMany'])

@@ -238,4 +238,37 @@ class GateTransitTest extends TestCase
         $this->assertSame('امیررضا شهبازی کارت', $result['user_name']);
         $this->assertSame(4, $rental->fresh()->sessions_remaining);
     }
+
+    public function test_dashboard_counts_allowed_and_denied_transits_for_week_and_month(): void
+    {
+        $this->seed(SuperAdminSeeder::class);
+        $token = $this->postJson('/api/auth/staff/login', [
+            'mobile' => SuperAdminSeeder::MOBILE,
+            'password' => SuperAdminSeeder::PASSWORD,
+        ])->assertOk()->json('token');
+
+        GateTransit::query()->create([
+            'card_number' => '1001',
+            'allowed' => true,
+            'reason' => 'allowed',
+            'user_name' => 'مجاز',
+        ]);
+        GateTransit::query()->create([
+            'card_number' => '1002',
+            'allowed' => false,
+            'reason' => 'no_enrollment',
+            'user_name' => 'غیرمجاز',
+        ]);
+
+        $this->withToken($token)->getJson('/api/admin/stats/transits?range=week')
+            ->assertOk()
+            ->assertJsonPath('total', 2)
+            ->assertJsonPath('allowed', 1)
+            ->assertJsonPath('denied', 1)
+            ->assertJsonCount(7, 'series');
+
+        $this->withToken($token)->getJson('/api/admin/stats/transits?range=month')
+            ->assertOk()
+            ->assertJsonCount(30, 'series');
+    }
 }

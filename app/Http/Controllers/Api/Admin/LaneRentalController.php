@@ -6,6 +6,8 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreLaneRentalRequest;
+use App\Http\Requests\Admin\UpdateLaneRentalRequest;
+use App\Models\LaneRentalMember;
 use App\Models\Lane;
 use App\Models\LaneRental;
 use App\Models\User;
@@ -16,18 +18,88 @@ use Illuminate\Support\Facades\DB;
 
 class LaneRentalController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $term = trim((string) $request->query('q', ''));
+        $laneId = $request->integer('lane_id');
+
         $rentals = LaneRental::query()
             ->with(['lane.type', 'renter'])
             ->withCount('members')
+            ->when($laneId > 0, fn ($query) => $query->where('lane_id', $laneId))
+            ->when($term !== '', function ($query) use ($term) {
+                $query->where(function ($inner) use ($term) {
+                    $inner->where('access_card_number', 'like', "%{$term}%")
+                        ->orWhereHas('renter', function ($user) use ($term) {
+                            $user->where('mobile', 'like', "%{$term}%")
+                                ->orWhere('first_name', 'like', "%{$term}%")
+                                ->orWhere('last_name', 'like', "%{$term}%")
+                                ->orWhereRaw("concat(coalesce(first_name, ''), ' ', coalesce(last_name, '')) like ?", ["%{$term}%"]);
+                        })
+                        ->orWhereHas('lane', fn ($lane) => $lane->where('title', 'like', "%{$term}%"));
+                });
+            })
             ->latest('id')
-            ->limit(100)
+            ->limit(200)
             ->get();
 
         return response()->json([
             'data' => $rentals->map(fn (LaneRental $rental) => $this->payload($rental))->values(),
         ]);
+    }
+
+    public function show(LaneRental $laneRental): JsonResponse
+    {
+        return response()->json([
+            'rental' => $this->payload($this->loadRental($laneRental)),
+        ]);
+    }
+
+    public function update(UpdateLaneRentalRequest $request, LaneRental $laneRental): JsonResponse
+    {
+        $laneRental->load('lane')->loadCount('members');
+        $students = $request->integer('students_count');
+        $lane = $laneRental->lane;
+        if ($lane && ($students < $lane->min_people || $students > $lane->max_people)) {
+            return response()->json([
+                'message' => "ظرفیت باید بین {$lane->min_people} و {$lane->max_people} باشد.",
+                'errors' => ['students_count' => ["ظرفیت باید بین {$lane->min_people} و {$lane->max_people} باشد."]],
+            ], 422);
+        }
+        if ($students < (int) $laneRental->members_count) {
+            return response()->json([
+                'message' => 'ظرفیت نمی‌تواند از تعداد ثبت‌نام‌شده‌ها کمتر باشد.',
+                'errors' => ['students_count' => ['ظرفیت نمی‌تواند از تعداد ثبت‌نام‌شده‌ها کمتر باشد.']],
+            ], 422);
+        }
+
+        $card = $request->string('access_card_number')->toString();
+        if ($this->cardTaken($card, $laneRental)) {
+            return response()->json([
+                'message' => 'این شماره کارت برای کاربر دیگری ثبت شده است.',
+                'errors' => ['access_card_number' => ['این شماره کارت برای کاربر دیگری ثبت شده است.']],
+            ], 422);
+        }
+
+        $remaining = $request->integer('sessions_remaining');
+        $laneRental->forceFill([
+            'students_count' => $students,
+            'sessions_remaining' => $remaining,
+            'sessions_total' => max($laneRental->sessions_total, $remaining),
+            'access_card_number' => $card,
+        ])->save();
+
+        return response()->json([
+            'message' => 'تخصیص لاین به‌روز شد.',
+            'rental' => $this->payload($this->loadRental($laneRental)),
+        ]);
+    }
+
+    public function destroy(LaneRental $laneRental): JsonResponse
+    {
+        $laneRental->delete();
+
+        return response()->json(['message' => 'تخصیص لاین حذف شد.']);
     }
 
     public function lookup(Request $request): JsonResponse
@@ -129,6 +201,27 @@ class LaneRentalController extends Controller
         $user->syncRoles($names);
     }
 
+    private function cardTaken(string $card, LaneRental $rental): bool
+    {
+        $canonical = AccessControlPayload::canonicalCard($card);
+        if ($canonical === '0') {
+            return false;
+        }
+
+        $userOwns = $this->cardOwner($card, $rental->renter_user_id) !== null;
+        $rentalOwns = LaneRental::query()
+            ->whereKeyNot($rental->id)
+            ->whereRaw("ltrim(access_card_number, '0') = ?", [$canonical])
+            ->exists();
+
+        return $userOwns || $rentalOwns;
+    }
+
+    private function loadRental(LaneRental $rental): LaneRental
+    {
+        return $rental->load(['lane.type', 'renter', 'members.user', 'members.creator'])->loadCount('members');
+    }
+
     private function cardOwner(string $card, ?int $ignoreUserId): ?User
     {
         $canonical = AccessControlPayload::canonicalCard($card);
@@ -173,6 +266,36 @@ class LaneRentalController extends Controller
                 'type' => $rental->lane->type?->name,
             ] : null,
             'renter' => $rental->renter ? $this->person($rental->renter) : null,
+            'members' => $rental->relationLoaded('members')
+                ? $rental->members
+                    ->sortBy('id')
+                    ->map(fn (LaneRentalMember $member) => $this->memberPayload($member))
+                    ->values()
+                : null,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function memberPayload(LaneRentalMember $member): array
+    {
+        $user = $member->user;
+        $creator = $member->creator;
+
+        return [
+            'id' => $member->id,
+            'created_at' => $member->created_at?->toIso8601String(),
+            'user' => $user ? [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'mobile' => $user->mobile,
+                'national_code' => $user->national_code,
+            ] : null,
+            'registered_by' => $creator ? [
+                'id' => $creator->id,
+                'first_name' => $creator->first_name,
+                'last_name' => $creator->last_name,
+            ] : null,
         ];
     }
 }

@@ -15,6 +15,7 @@ use App\Http\Requests\Admin\SaveUserRegistrationStepRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateAccessRequest;
 use App\Http\Resources\UserResource;
+use App\Models\GateTransit;
 use App\Models\User;
 use App\Services\RegistrationStepSaver;
 use Illuminate\Http\JsonResponse;
@@ -38,6 +39,52 @@ class UserController extends Controller
             'active' => (clone $query)->where('status', UserStatus::Active)->count(),
             'blocked' => (clone $query)->where('status', UserStatus::Blocked)->count(),
             'today' => (clone $query)->whereBetween('created_at', [$todayStarts, $todayEnds])->count(),
+        ]);
+    }
+
+    public function transitStats(Request $request): JsonResponse
+    {
+        $range = $request->query('range') === 'month' ? 'month' : 'week';
+        $days = $range === 'month' ? 30 : 7;
+        $start = now('Asia/Tehran')->startOfDay()->subDays($days - 1);
+        $end = now('Asia/Tehran')->endOfDay();
+
+        $rows = GateTransit::query()
+            ->whereBetween('created_at', [$start->clone()->utc(), $end->clone()->utc()])
+            ->get(['allowed', 'created_at']);
+
+        $buckets = [];
+        for ($i = 0; $i < $days; $i++) {
+            $day = $start->copy()->addDays($i);
+            $buckets[$day->toDateString()] = [
+                'date' => $day->toDateString(),
+                'total' => 0,
+                'allowed' => 0,
+                'denied' => 0,
+            ];
+        }
+
+        foreach ($rows as $row) {
+            $key = $row->created_at?->timezone('Asia/Tehran')->toDateString();
+            if (! isset($buckets[$key])) {
+                continue;
+            }
+            $buckets[$key]['total']++;
+            if ($row->allowed) {
+                $buckets[$key]['allowed']++;
+            } else {
+                $buckets[$key]['denied']++;
+            }
+        }
+
+        $series = array_values($buckets);
+
+        return response()->json([
+            'range' => $range,
+            'total' => array_sum(array_column($series, 'total')),
+            'allowed' => array_sum(array_column($series, 'allowed')),
+            'denied' => array_sum(array_column($series, 'denied')),
+            'series' => $series,
         ]);
     }
 

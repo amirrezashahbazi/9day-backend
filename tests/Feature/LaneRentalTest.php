@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Lane;
+use App\Models\LaneRental;
 use App\Models\LaneRentalMember;
 use App\Models\User;
 use Database\Seeders\SuperAdminSeeder;
@@ -129,6 +130,68 @@ class LaneRentalTest extends TestCase
         $existing->refresh();
         $this->assertTrue(Hash::check('KeepMe-99', $existing->password));
         $this->assertSame('7001001', $existing->access_card_number);
+    }
+
+    public function test_staff_can_search_edit_and_list_registered_members(): void
+    {
+        $this->seed(SuperAdminSeeder::class);
+        $token = $this->staffToken();
+        $laneId = $this->withToken($token)->postJson('/api/admin/lanes', [
+            'title' => 'لاین جستجو',
+            'type_name' => 'طولی',
+            'fee' => 1000,
+            'min_people' => 1,
+            'max_people' => 4,
+        ])->assertCreated()->json('lane.id');
+
+        $rentalId = $this->withToken($token)->postJson('/api/admin/lane-rentals', [
+            'mobile' => '09124440001',
+            'first_name' => 'مریم',
+            'last_name' => 'اجاره',
+            'lane_id' => $laneId,
+            'students_count' => 2,
+            'sessions_count' => 4,
+            'access_card_number' => 'LANE-310',
+        ])->assertCreated()->json('rental.id');
+
+        $member = User::factory()->create(['mobile' => '09124440002', 'first_name' => 'شاگرد', 'last_name' => 'ثبت']);
+        $renter = User::query()->where('mobile', '09124440001')->firstOrFail();
+        $renterToken = $renter->createToken('test')->plainTextToken;
+        Auth::forgetGuards();
+        $this->withToken($renterToken)->postJson("/api/rent/lanes/{$rentalId}/members", [
+            'mobile' => $member->mobile,
+        ])->assertCreated();
+        $this->withToken($renterToken)->postJson("/api/rent/lanes/{$rentalId}/members", [
+            'mobile' => '09124440003',
+            'first_name' => 'دوم',
+            'last_name' => 'شاگرد',
+        ])->assertCreated();
+        Auth::forgetGuards();
+
+        $this->withToken($token)->getJson('/api/admin/lane-rentals?q=مریم')
+            ->assertOk()
+            ->assertJsonPath('data.0.students_count', 2)
+            ->assertJsonPath('data.0.members_count', 2);
+
+        $this->withToken($token)->getJson("/api/admin/lane-rentals/{$rentalId}")
+            ->assertOk()
+            ->assertJsonPath('rental.members.0.user.first_name', 'شاگرد')
+            ->assertJsonPath('rental.members.0.registered_by.id', $renter->id);
+
+        $this->withToken($token)->patchJson("/api/admin/lane-rentals/{$rentalId}", [
+            'students_count' => 1,
+            'sessions_remaining' => 4,
+            'access_card_number' => 'LANE-310',
+        ])->assertStatus(422);
+
+        $this->withToken($token)->patchJson("/api/admin/lane-rentals/{$rentalId}", [
+            'students_count' => 3,
+            'sessions_remaining' => 2,
+            'access_card_number' => 'LANE-311',
+        ])->assertOk()->assertJsonPath('rental.sessions_remaining', 2);
+
+        $this->withToken($token)->deleteJson("/api/admin/lane-rentals/{$rentalId}")->assertOk();
+        $this->assertSame(0, LaneRental::query()->count());
     }
 
     private function staffToken(): string

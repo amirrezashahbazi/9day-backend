@@ -30,8 +30,7 @@ class LaneMemberController extends Controller
     public function store(StoreLaneMemberRequest $request, LaneRental $laneRental): JsonResponse
     {
         $this->owns($laneRental);
-        $laneRental->load('lane');
-        $capacity = (int) $laneRental->lane->max_people;
+        $capacity = (int) $laneRental->students_count;
         if ($laneRental->members()->count() >= $capacity) {
             return response()->json([
                 'message' => "ظرفیت این لاین {$capacity} نفر است.",

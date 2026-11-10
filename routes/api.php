@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('permission:panel.access')->prefix('admin')->group(function () {
         Route::get('stats', [AdminUserController::class, 'stats']);
+        Route::get('stats/transits', [AdminUserController::class, 'transitStats']);
         Route::get('reports', [AdminUserController::class, 'report']);
         Route::get('time-slot-charges', [AdminTimeSlotChargeController::class, 'index']);
         Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
@@ -80,6 +81,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('lane-rentals', [AdminLaneRentalController::class, 'index']);
             Route::get('lane-renters/lookup', [AdminLaneRentalController::class, 'lookup']);
             Route::post('lane-rentals', [AdminLaneRentalController::class, 'store']);
+            Route::get('lane-rentals/{laneRental}', [AdminLaneRentalController::class, 'show'])->whereNumber('laneRental');
+            Route::patch('lane-rentals/{laneRental}', [AdminLaneRentalController::class, 'update'])->whereNumber('laneRental');
+            Route::delete('lane-rentals/{laneRental}', [AdminLaneRentalController::class, 'destroy'])->whereNumber('laneRental');
         });
 
         Route::middleware('permission:courses.view')->group(function () {

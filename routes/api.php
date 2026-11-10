@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\Admin\LaneController as AdminLaneController;
 use App\Http\Controllers\Api\Admin\LaneRentalController as AdminLaneRentalController;
 use App\Http\Controllers\Api\Admin\TimeSlotChargeController as AdminTimeSlotChargeController;
 use App\Http\Controllers\Api\Admin\TransitReportController as AdminTransitReportController;
+use App\Http\Controllers\Api\Admin\RoleAccessController as AdminRoleAccessController;
+use App\Http\Controllers\Api\Admin\SystemUserController as AdminSystemUserController;
 use App\Http\Controllers\Api\Admin\TimeSlotController as AdminTimeSlotController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Rent\LaneMemberController as RentLaneMemberController;
@@ -48,23 +50,39 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:panel.access')->prefix('admin')->group(function () {
         Route::get('stats', [AdminUserController::class, 'stats']);
         Route::get('stats/transits', [AdminUserController::class, 'transitStats']);
-        Route::get('reports', [AdminUserController::class, 'report']);
-        Route::get('reports/transits', [AdminTransitReportController::class, 'index']);
-        Route::get('reports/lane-rentals', [AdminLaneRentalController::class, 'index']);
-        Route::get('reports/lane-rentals/{laneRental}', [AdminLaneRentalController::class, 'show'])->whereNumber('laneRental');
-        Route::get('time-slot-charges', [AdminTimeSlotChargeController::class, 'index']);
-        Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
-        Route::post('users/{user}/time-slot-charges', [AdminTimeSlotChargeController::class, 'store'])->whereNumber('user');
+        Route::get('reports', [AdminUserController::class, 'report'])->middleware('permission:reports.view');
+        Route::get('reports/transits', [AdminTransitReportController::class, 'index'])->middleware('permission:reports.view');
+        Route::get('reports/lane-rentals', [AdminLaneRentalController::class, 'index'])->middleware('permission:reports.view');
+        Route::get('reports/lane-rentals/{laneRental}', [AdminLaneRentalController::class, 'show'])->whereNumber('laneRental')->middleware('permission:reports.view');
+        Route::get('time-slot-charges', [AdminTimeSlotChargeController::class, 'index'])->middleware('permission:reports.view');
+        Route::middleware('permission:time_slots.manage')->group(function () {
+            Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
+            Route::post('time-slots', [AdminTimeSlotController::class, 'store']);
+            Route::post('time-slots/bulk-delete', [AdminTimeSlotController::class, 'destroyMany']);
+            Route::patch('time-slots/{timeSlot}', [AdminTimeSlotController::class, 'update'])->whereNumber('timeSlot');
+            Route::delete('time-slots/{timeSlot}', [AdminTimeSlotController::class, 'destroy'])->whereNumber('timeSlot');
+            Route::post('users/{user}/time-slot-charges', [AdminTimeSlotChargeController::class, 'store'])->whereNumber('user');
+        });
         Route::get('access-control-logs', [AdminAccessControlLogController::class, 'index']);
-        Route::get('users', [AdminUserController::class, 'index']);
-        Route::post('users', [AdminUserController::class, 'store']);
+        Route::middleware('permission:users.view')->group(function () {
+            Route::get('users', [AdminUserController::class, 'index']);
+            Route::get('users/{user}', [AdminUserController::class, 'show'])->whereNumber('user');
+        });
+        Route::middleware('permission:users.create')->group(function () {
+            Route::post('users', [AdminUserController::class, 'store']);
+            Route::get('system-users', [AdminSystemUserController::class, 'index']);
+            Route::post('system-users', [AdminSystemUserController::class, 'store']);
+            Route::patch('system-users/{user}', [AdminSystemUserController::class, 'update'])->whereNumber('user');
+            Route::delete('system-users/{user}', [AdminSystemUserController::class, 'destroy'])->whereNumber('user');
+        });
+        Route::get('role-access', [AdminRoleAccessController::class, 'show']);
+        Route::put('role-access', [AdminRoleAccessController::class, 'update']);
         Route::post('federation/membership-status', AdminFederationInquiryController::class);
         Route::post('users/mobile/otp', [AdminMobileVerificationController::class, 'send'])->middleware('throttle:otp');
         Route::post('users/mobile/verify', [AdminMobileVerificationController::class, 'confirm'])->middleware('throttle:otp-verify');
         Route::post('users/assign-roles', [AdminUserController::class, 'assignRoles']);
         Route::post('users/bulk-delete', [AdminUserController::class, 'destroyMany']);
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->whereNumber('user');
-        Route::get('users/{user}', [AdminUserController::class, 'show']);
         Route::put('users/{user}/registration/steps/{step}', [AdminUserController::class, 'updateRegistration'])
             ->whereNumber('user')
             ->whereNumber('step');
@@ -104,10 +122,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('courses/{course}', [AdminCourseController::class, 'update'])->whereNumber('course');
             Route::delete('courses/{course}', [AdminCourseController::class, 'destroy'])->whereNumber('course');
             Route::put('course-settings', [AdminCourseSettingController::class, 'update']);
-            Route::post('time-slots', [AdminTimeSlotController::class, 'store']);
-            Route::post('time-slots/bulk-delete', [AdminTimeSlotController::class, 'destroyMany']);
-            Route::patch('time-slots/{timeSlot}', [AdminTimeSlotController::class, 'update'])->whereNumber('timeSlot');
-            Route::delete('time-slots/{timeSlot}', [AdminTimeSlotController::class, 'destroy'])->whereNumber('timeSlot');
             Route::post('{taxonomyTable}', [AdminCourseTaxonomyController::class, 'store'])
                 ->whereIn('taxonomyTable', ['course_types', 'course_fields', 'course_levels']);
             Route::post('{taxonomyTable}/bulk-delete', [AdminCourseTaxonomyController::class, 'destroyMany'])

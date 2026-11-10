@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\SuperAdminSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\Concerns\AuthenticatesUsers;
 use Tests\TestCase;
 
@@ -35,8 +36,12 @@ class AdminTest extends TestCase
 
         $this->withToken($token)->getJson('/api/admin/users')
             ->assertOk()
-            ->assertJsonPath('meta.total', 1)
-            ->assertJsonPath('data.0.role', 'admin');
+            ->assertJsonPath('meta.total', 0);
+
+        $this->withToken($token)->getJson('/api/admin/system-users')
+            ->assertOk()
+            ->assertJsonPath('data.0.role', 'admin')
+            ->assertJsonPath('data.0.mobile', '09126666666');
 
         $this->withToken($token)->patchJson('/api/admin/users/'.$created->json('user.id').'/access', [
             'status' => 'blocked',
@@ -44,8 +49,9 @@ class AdminTest extends TestCase
         ])->assertOk()->assertJsonPath('user.status', 'blocked')->assertJsonPath('user.role', 'user');
     }
 
-    public function test_admin_can_introduce_a_user_but_not_another_admin(): void
+    public function test_admin_cannot_define_users_until_the_permission_is_granted(): void
     {
+        $this->seed(SuperAdminSeeder::class);
         $admin = User::factory()->admin()->create(['mobile' => '09127777777']);
         $login = $this->postJson('/api/auth/staff/login', [
             'mobile' => '09127777777',
@@ -59,15 +65,47 @@ class AdminTest extends TestCase
             'first_name' => 'کیان',
             'grant_access' => true,
             'skip_phone_verification' => true,
+        ])->assertForbidden();
+
+        $this->withToken($token)->postJson('/api/admin/system-users', [
+            'first_name' => 'کیان',
+            'last_name' => 'ادمین',
+            'mobile' => '09129999999',
+            'password' => 'another-admin',
+            'role' => 'admin',
+        ])->assertForbidden();
+
+        Auth::forgetGuards();
+        $super = $this->postJson('/api/auth/staff/login', [
+            'mobile' => SuperAdminSeeder::MOBILE,
+            'password' => SuperAdminSeeder::PASSWORD,
+        ])->assertOk()->json('token');
+
+        Auth::forgetGuards();
+        $granted = $this->withToken($super)->getJson('/api/admin/role-access')
+            ->assertOk()
+            ->json('role.permissions');
+        $granted[] = 'users.create';
+
+        $this->withToken($super)->putJson('/api/admin/role-access', [
+            'permissions' => $granted,
+        ])->assertOk();
+
+        Auth::forgetGuards();
+        $this->withToken($token)->postJson('/api/admin/users', [
+            'mobile' => '09128888888',
+            'first_name' => 'کیان',
+            'grant_access' => true,
+            'skip_phone_verification' => true,
         ])->assertCreated()->assertJsonPath('user.status', 'active')->assertJsonPath('user.introduced_by', $admin->id);
 
         $this->withToken($token)->postJson('/api/admin/users', [
-            'mobile' => '09129999999',
+            'mobile' => '09129999991',
             'role' => 'admin',
             'password' => 'another-admin',
             'grant_access' => true,
             'skip_phone_verification' => true,
-        ])->assertStatus(403);
+        ])->assertForbidden();
 
         $userToken = $this->loginUser('09120000000');
         $this->withToken($userToken)->getJson('/api/admin/users')->assertForbidden();

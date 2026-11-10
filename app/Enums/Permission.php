@@ -14,4 +14,5 @@ enum Permission: string
     case CoursesManage = 'courses.manage';
     case LanesManage = 'lanes.manage';
     case LanesMembers = 'lanes.members';
+    case TimeSlotsManage = 'time_slots.manage';
 }

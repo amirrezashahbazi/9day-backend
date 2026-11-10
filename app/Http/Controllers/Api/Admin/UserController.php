@@ -118,6 +118,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->visibleTo($actor)
+            ->members()
             ->with(['introducer', 'province', 'city', 'district', 'roles.permissions', 'permissions'])
             ->when(filled($filters['status'] ?? null), fn ($query) => $query->where('status', $filters['status']))
             ->when(filled($filters['role'] ?? null), fn ($query) => $query->withRole($filters['role']))

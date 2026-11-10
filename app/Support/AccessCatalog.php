@@ -15,12 +15,12 @@ class AccessCatalog
             UserRole::Admin => [
                 Permission::PanelAccess,
                 Permission::UsersView,
-                Permission::UsersCreate,
                 Permission::UsersUpdate,
                 Permission::ReportsView,
                 Permission::CoursesView,
                 Permission::CoursesManage,
                 Permission::LanesManage,
+                Permission::TimeSlotsManage,
             ],
             UserRole::LaneRenter => [
                 Permission::LanesMembers,
@@ -29,5 +29,21 @@ class AccessCatalog
                 Permission::RegistrationManage,
             ],
         };
+    }
+
+    /** @return array<string, string> */
+    public static function staffPermissionLabels(): array
+    {
+        return [
+            Permission::PanelAccess->value => 'ورود به سامانه',
+            Permission::UsersView->value => 'فهرست کاربران',
+            Permission::UsersCreate->value => 'تعریف کاربر',
+            Permission::UsersUpdate->value => 'تغییر وضعیت کاربر',
+            Permission::TimeSlotsManage->value => 'سانس‌ها',
+            Permission::LanesManage->value => 'اجاره لاین',
+            Permission::ReportsView->value => 'گزارش‌ها',
+            Permission::CoursesView->value => 'مشاهده دوره‌ها',
+            Permission::CoursesManage->value => 'تعریف دوره',
+        ];
     }
 }

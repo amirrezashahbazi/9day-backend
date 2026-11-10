@@ -44,7 +44,10 @@ class RoleAccessController extends Controller
             'permissions.*' => ['string', 'distinct'],
         ]);
 
-        $chosen = array_values(array_intersect($data['permissions'], $allowed));
+        $chosen = array_values(array_unique([
+            ...array_intersect($data['permissions'], $allowed),
+            Permission::PanelAccess->value,
+        ]));
         $role = $this->adminRole();
         $role->load('permissions');
         $kept = $role->permissions
@@ -60,7 +63,7 @@ class RoleAccessController extends Controller
 
         return response()->json([
             'message' => 'دسترسی‌های نقش ادمین ذخیره شد.',
-            'permissions' => $chosen,
+            'permissions' => array_values(array_diff($chosen, [Permission::PanelAccess->value])),
         ]);
     }
 

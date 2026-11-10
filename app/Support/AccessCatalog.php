@@ -35,7 +35,6 @@ class AccessCatalog
     public static function staffPermissionLabels(): array
     {
         return [
-            Permission::PanelAccess->value => 'ورود به سامانه',
             Permission::UsersView->value => 'فهرست کاربران',
             Permission::UsersCreate->value => 'تعریف کاربر',
             Permission::UsersUpdate->value => 'تغییر وضعیت کاربر',

@@ -81,6 +81,32 @@ class SystemUserController extends Controller
         ]);
     }
 
+    public function updateStatus(Request $request, User $user): JsonResponse
+    {
+        $this->assertSystemUser($user);
+        if ($request->user()?->id === $user->id) {
+            return response()->json(['message' => 'نمی‌توانید وضعیت حساب خودتان را تغییر دهید.'], 422);
+        }
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in([UserStatus::Active->value, UserStatus::Blocked->value])],
+        ], [
+            'status.required' => 'وضعیت را مشخص کنید.',
+            'status.in' => 'وضعیت باید فعال یا غیرفعال باشد.',
+        ]);
+
+        $user->status = UserStatus::from($data['status']);
+        $user->save();
+        if ($user->status === UserStatus::Blocked) {
+            $user->tokens()->delete();
+        }
+
+        return response()->json([
+            'message' => $user->status === UserStatus::Blocked ? 'کاربر غیرفعال شد.' : 'کاربر فعال شد.',
+            'user' => $this->payload($user),
+        ]);
+    }
+
     public function destroy(Request $request, User $user): JsonResponse
     {
         $this->assertSystemUser($user);
@@ -95,6 +121,9 @@ class SystemUserController extends Controller
     /** @return array{first_name: string, last_name: string, mobile: string, password: ?string} */
     private function validateUser(Request $request, ?User $user): array
     {
+        $request->merge([
+            'mobile' => $this->englishDigits((string) $request->input('mobile', '')),
+        ]);
         $name = ['required', 'string', 'min:2', 'max:100', 'regex:/^[\p{Arabic}A-Za-z\s\x{200C}]+$/u'];
         $data = $request->validate([
             'first_name' => $name,
@@ -115,6 +144,15 @@ class SystemUserController extends Controller
         ]);
 
         return $data;
+    }
+
+    private function englishDigits(string $value): string
+    {
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        return str_replace([...$persian, ...$arabic], [...$english, ...$english], trim($value));
     }
 
     private function assertSystemUser(User $user): void

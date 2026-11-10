@@ -73,23 +73,25 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('system-users', [AdminSystemUserController::class, 'index']);
             Route::post('system-users', [AdminSystemUserController::class, 'store']);
             Route::patch('system-users/{user}', [AdminSystemUserController::class, 'update'])->whereNumber('user');
+            Route::patch('system-users/{user}/status', [AdminSystemUserController::class, 'updateStatus'])->whereNumber('user')->middleware('permission:users.update');
             Route::delete('system-users/{user}', [AdminSystemUserController::class, 'destroy'])->whereNumber('user');
         });
         Route::get('role-access', [AdminRoleAccessController::class, 'show']);
         Route::put('role-access', [AdminRoleAccessController::class, 'update']);
-        Route::post('federation/membership-status', AdminFederationInquiryController::class);
-        Route::post('users/mobile/otp', [AdminMobileVerificationController::class, 'send'])->middleware('throttle:otp');
-        Route::post('users/mobile/verify', [AdminMobileVerificationController::class, 'confirm'])->middleware('throttle:otp-verify');
+        Route::post('federation/membership-status', AdminFederationInquiryController::class)->middleware('permission:users.create');
+        Route::post('users/mobile/otp', [AdminMobileVerificationController::class, 'send'])->middleware(['permission:users.create', 'throttle:otp']);
+        Route::post('users/mobile/verify', [AdminMobileVerificationController::class, 'confirm'])->middleware(['permission:users.create', 'throttle:otp-verify']);
         Route::post('users/assign-roles', [AdminUserController::class, 'assignRoles']);
         Route::post('users/bulk-delete', [AdminUserController::class, 'destroyMany']);
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->whereNumber('user');
         Route::put('users/{user}/registration/steps/{step}', [AdminUserController::class, 'updateRegistration'])
             ->whereNumber('user')
-            ->whereNumber('step');
-        Route::patch('users/{user}/access', [AdminUserController::class, 'updateAccess']);
+            ->whereNumber('step')
+            ->middleware('permission:users.create,users.update');
+        Route::patch('users/{user}/access', [AdminUserController::class, 'updateAccess'])->middleware('permission:users.update');
         Route::post('users/{user}/access-card', [AdminAccessCardController::class, 'enroll'])->whereNumber('user');
-        Route::get('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'index'])->whereNumber('user');
-        Route::post('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'store'])->whereNumber('user');
+        Route::get('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'index'])->whereNumber('user')->middleware('permission:courses.view');
+        Route::post('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'store'])->whereNumber('user')->middleware('permission:courses.manage');
         Route::get('site-settings', [AdminSiteSettingController::class, 'show']);
         Route::put('site-settings', [AdminSiteSettingController::class, 'update']);
 

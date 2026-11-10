@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateSiteSettingsRequest;
 use App\Models\AppSetting;
@@ -19,6 +20,10 @@ class SiteSettingController extends Controller
 
     public function update(UpdateSiteSettingsRequest $request): JsonResponse
     {
+        if (! $request->user()?->hasRole(UserRole::SuperAdmin)) {
+            abort(403, 'فقط سوپر ادمین می‌تواند تنظیمات سایت را تغییر دهد.');
+        }
+
         AppSetting::putValue(
             'access_control_device_serial',
             $request->string('access_control_device_serial')->toString(),

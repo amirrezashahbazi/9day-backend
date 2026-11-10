@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\Permission;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use Database\Seeders\SuperAdminSeeder;
@@ -435,11 +436,18 @@ class UserController extends Controller
         }
 
         if ($request->exists('permissions')) {
-            $user->syncPermissions($request->input('permissions', []));
+            $names = collect($request->input('permissions', []))
+                ->reject(fn ($name) => $name === Permission::PanelAccess->value)
+                ->values()
+                ->all();
+            $user->syncPermissions($names);
         }
 
         $status = UserStatus::from($request->string('status')->toString());
         $user->status = $status;
+        if ($status === UserStatus::Blocked) {
+            $user->tokens()->delete();
+        }
 
         if ($status === UserStatus::Active && $user->access_granted_at === null) {
             $user->access_granted_at = now();

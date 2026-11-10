@@ -44,8 +44,16 @@ class UserController extends Controller
 
     public function transitStats(Request $request): JsonResponse
     {
-        $range = $request->query('range') === 'month' ? 'month' : 'week';
-        $days = $range === 'month' ? 30 : 7;
+        $range = match ($request->query('range')) {
+            'week' => 'week',
+            'month' => 'month',
+            default => 'today',
+        };
+        $days = match ($range) {
+            'month' => 30,
+            'week' => 7,
+            default => 1,
+        };
         $start = now('Asia/Tehran')->startOfDay()->subDays($days - 1);
         $end = now('Asia/Tehran')->endOfDay();
 
@@ -54,18 +62,33 @@ class UserController extends Controller
             ->get(['allowed', 'created_at']);
 
         $buckets = [];
-        for ($i = 0; $i < $days; $i++) {
-            $day = $start->copy()->addDays($i);
-            $buckets[$day->toDateString()] = [
-                'date' => $day->toDateString(),
-                'total' => 0,
-                'allowed' => 0,
-                'denied' => 0,
-            ];
+        if ($range === 'today') {
+            for ($hour = 0; $hour < 24; $hour++) {
+                $key = sprintf('%02d', $hour);
+                $buckets[$key] = [
+                    'date' => $start->toDateString().'T'.$key,
+                    'label' => $key,
+                    'total' => 0,
+                    'allowed' => 0,
+                    'denied' => 0,
+                ];
+            }
+        } else {
+            for ($i = 0; $i < $days; $i++) {
+                $day = $start->copy()->addDays($i);
+                $buckets[$day->toDateString()] = [
+                    'date' => $day->toDateString(),
+                    'label' => $day->toDateString(),
+                    'total' => 0,
+                    'allowed' => 0,
+                    'denied' => 0,
+                ];
+            }
         }
 
         foreach ($rows as $row) {
-            $key = $row->created_at?->timezone('Asia/Tehran')->toDateString();
+            $local = $row->created_at?->timezone('Asia/Tehran');
+            $key = $range === 'today' ? $local?->format('H') : $local?->toDateString();
             if (! isset($buckets[$key])) {
                 continue;
             }

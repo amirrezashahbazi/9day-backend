@@ -260,6 +260,12 @@ class GateTransitTest extends TestCase
             'user_name' => 'غیرمجاز',
         ]);
 
+        $this->withToken($token)->getJson('/api/admin/stats/transits')
+            ->assertOk()
+            ->assertJsonPath('range', 'today')
+            ->assertJsonPath('total', 2)
+            ->assertJsonCount(24, 'series');
+
         $this->withToken($token)->getJson('/api/admin/stats/transits?range=week')
             ->assertOk()
             ->assertJsonPath('total', 2)

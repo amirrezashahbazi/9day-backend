@@ -33,6 +33,8 @@ class StoreCourseRequest extends FormRequest
             'fee' => ['required', 'integer', 'min:0'],
             'capacity' => ['required', 'integer', 'min:1', 'max:100000'],
             'sessions_count' => ['required', 'integer', 'min:1', 'max:500'],
+            'slot_starts_at' => ['required', 'date_format:H:i'],
+            'slot_ends_at' => ['required', 'date_format:H:i', 'after:slot_starts_at'],
             'primary_index' => ['nullable', 'integer', 'min:0', 'max:3'],
             'banners' => ['nullable', 'array', 'max:4'],
             'banners.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:'.$maxKb],
@@ -52,6 +54,11 @@ class StoreCourseRequest extends FormRequest
             'fee.required' => 'هزینه دوره الزامی است.',
             'capacity.required' => 'ظرفیت الزامی است.',
             'sessions_count.required' => 'تعداد جلسات دوره الزامی است.',
+            'slot_starts_at.required' => 'ساعت شروع سانس الزامی است.',
+            'slot_starts_at.date_format' => 'ساعت شروع سانس معتبر نیست.',
+            'slot_ends_at.required' => 'ساعت پایان سانس الزامی است.',
+            'slot_ends_at.date_format' => 'ساعت پایان سانس معتبر نیست.',
+            'slot_ends_at.after' => 'ساعت پایان سانس باید بعد از ساعت شروع باشد.',
             'registration_to.after_or_equal' => 'پایان ثبت‌نام نمی‌تواند قبل از شروع باشد.',
             'ends_on.after_or_equal' => 'پایان دوره نمی‌تواند قبل از شروع باشد.',
             'max_age.gte' => 'حداکثر سن باید بزرگ‌تر یا مساوی حداقل سن باشد.',
@@ -64,8 +71,11 @@ class StoreCourseRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $nullable = [];
-        foreach (['registration_from', 'registration_to', 'starts_on', 'ends_on', 'min_age', 'max_age'] as $key) {
+        foreach (['registration_from', 'registration_to', 'starts_on', 'ends_on', 'min_age', 'max_age', 'slot_starts_at', 'slot_ends_at'] as $key) {
             $value = $this->input($key);
+            if (in_array($key, ['slot_starts_at', 'slot_ends_at'], true) && is_string($value) && preg_match('/^\d{2}:\d{2}/', $value)) {
+                $value = substr($value, 0, 5);
+            }
             $nullable[$key] = ($value === '' || $value === null) ? null : $value;
         }
 

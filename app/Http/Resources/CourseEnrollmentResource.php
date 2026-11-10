@@ -26,6 +26,8 @@ class CourseEnrollmentResource extends JsonResource
                 'id' => $this->course?->id,
                 'title' => $this->course?->title,
                 'sessions_count' => $this->course?->sessions_count,
+                'slot_starts_at' => is_string($this->course?->slot_starts_at) ? substr($this->course->slot_starts_at, 0, 5) : null,
+                'slot_ends_at' => is_string($this->course?->slot_ends_at) ? substr($this->course->slot_ends_at, 0, 5) : null,
                 'fee' => $this->course?->fee,
                 'capacity' => $this->course?->capacity,
                 'type' => $this->course?->relationLoaded('type') ? [

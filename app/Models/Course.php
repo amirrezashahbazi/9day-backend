@@ -27,6 +27,8 @@ class Course extends Model
         'fee',
         'capacity',
         'sessions_count',
+        'slot_starts_at',
+        'slot_ends_at',
         'enrollments_count',
         'created_by',
     ];

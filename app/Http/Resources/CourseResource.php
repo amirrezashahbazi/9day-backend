@@ -38,6 +38,8 @@ class CourseResource extends JsonResource
             'fee' => $this->fee,
             'capacity' => $this->capacity,
             'sessions_count' => $this->sessions_count,
+            'slot_starts_at' => self::clock($this->slot_starts_at),
+            'slot_ends_at' => self::clock($this->slot_ends_at),
             'enrollments_count' => $this->enrollments_count,
             'banners' => $this->whenLoaded('banners', fn () => $this->banners->map(fn ($banner) => [
                 'id' => $banner->id,
@@ -48,5 +50,14 @@ class CourseResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    private static function clock(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return substr($value, 0, 5);
     }
 }

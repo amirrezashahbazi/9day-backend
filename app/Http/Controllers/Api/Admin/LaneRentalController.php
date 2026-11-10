@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\StoreLaneRentalRequest;
 use App\Models\Lane;
 use App\Models\LaneRental;
 use App\Models\User;
+use App\Support\AccessControlPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,8 +57,8 @@ class LaneRentalController extends Controller
 
         $card = $request->string('access_card_number')->toString();
         $existing = User::query()->where('mobile', $request->string('mobile')->toString())->first();
-        $cardOwner = User::query()->where('access_card_number', $card)->first();
-        if ($cardOwner && (! $existing || $cardOwner->id !== $existing->id)) {
+        $cardOwner = $this->cardOwner($card, $existing?->id);
+        if ($cardOwner) {
             return response()->json([
                 'message' => 'این شماره کارت برای کاربر دیگری ثبت شده است.',
                 'errors' => ['access_card_number' => ['این شماره کارت برای کاربر دیگری ثبت شده است.']],
@@ -88,9 +89,9 @@ class LaneRentalController extends Controller
                 $user->phone_verified_at = now();
                 $user->access_granted_at = now();
                 $user->registration_completed_at = now();
+                $user->password = $request->string('password')->toString();
             }
 
-            $user->password = $request->string('password')->toString();
             $user->access_card_number = $card;
             $user->access_card_enrolled_at = now();
             $user->save();
@@ -126,6 +127,19 @@ class LaneRentalController extends Controller
             ->values()
             ->all();
         $user->syncRoles($names);
+    }
+
+    private function cardOwner(string $card, ?int $ignoreUserId): ?User
+    {
+        $canonical = AccessControlPayload::canonicalCard($card);
+        if ($canonical === '0') {
+            return null;
+        }
+
+        return User::query()
+            ->when($ignoreUserId, fn ($query) => $query->whereKeyNot($ignoreUserId))
+            ->whereRaw("ltrim(access_card_number, '0') = ?", [$canonical])
+            ->first();
     }
 
     /** @return array<string, mixed> */

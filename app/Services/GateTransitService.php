@@ -8,6 +8,7 @@ use App\Enums\UserStatus;
 use App\Models\AccessControlLog;
 use App\Models\CourseEnrollment;
 use App\Models\GateTransit;
+use App\Models\LaneRental;
 use App\Models\User;
 use App\Support\AccessControlPayload;
 use Illuminate\Support\Facades\DB;
@@ -73,21 +74,34 @@ class GateTransitService
             $sessionsRemainingAfter = null;
             $courseTitle = null;
 
-            if (! $user) {
-                $reason = GateTransitReason::UnknownCard;
-            } elseif ($user->status === UserStatus::Blocked) {
+            if ($user && $user->status === UserStatus::Blocked) {
                 $reason = GateTransitReason::UserBlocked;
             } else {
-                $enrollment = CourseEnrollment::query()
-                    ->with('course')
-                    ->where('user_id', $user->id)
-                    ->where('status', EnrollmentStatus::Active->value)
-                    ->lockForUpdate()
-                    ->orderByDesc('id')
-                    ->first();
+                if ($user) {
+                    $enrollment = CourseEnrollment::query()
+                        ->with('course')
+                        ->where('user_id', $user->id)
+                        ->where('status', EnrollmentStatus::Active->value)
+                        ->lockForUpdate()
+                        ->orderByDesc('id')
+                        ->first();
+                }
 
                 if (! $enrollment) {
-                    $reason = GateTransitReason::NoEnrollment;
+                    $rental = $this->consumeLaneRental($cardNumber);
+                    if ($rental === null) {
+                        $reason = $user ? GateTransitReason::NoEnrollment : GateTransitReason::UnknownCard;
+                    } else {
+                        $allowed = $rental['allowed'];
+                        $reason = $rental['reason'];
+                        $sessionsRemainingAfter = $rental['sessions_remaining'];
+                        $courseTitle = $rental['title'];
+                        if ($rental['user']) {
+                            $user = $rental['user'];
+                            $userName = $rental['user_name'] ?: $userName;
+                            $cardNumber = $cardNumber ?: $user->access_card_number;
+                        }
+                    }
                 } elseif ($enrollment->sessions_remaining < 1) {
                     $enrollment->forceFill([
                         'status' => EnrollmentStatus::Exhausted,
@@ -185,5 +199,66 @@ class GateTransitService
                 'course_id' => $enrollment?->course_id,
             ];
         });
+    }
+
+    /**
+     * A lane rental is charged on its own card. Leading zeros do not make it a different card.
+     *
+     * @return array{allowed: bool, reason: GateTransitReason, sessions_remaining: int, title: ?string, user: ?User, user_name: ?string}|null
+     */
+    private function consumeLaneRental(?string $cardNumber): ?array
+    {
+        if (! is_string($cardNumber) || $cardNumber === '') {
+            return null;
+        }
+
+        $canonical = AccessControlPayload::canonicalCard($cardNumber);
+        if ($canonical === '0') {
+            return null;
+        }
+
+        $rental = LaneRental::query()
+            ->with(['lane', 'renter'])
+            ->whereRaw("ltrim(access_card_number, '0') = ?", [$canonical])
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $rental) {
+            return null;
+        }
+
+        $renter = $rental->renter;
+        $name = trim(collect([$renter?->first_name, $renter?->last_name])->filter()->implode(' '));
+        $title = $rental->lane?->title;
+
+        if ($rental->sessions_remaining < 1) {
+            return [
+                'allowed' => false,
+                'reason' => GateTransitReason::Exhausted,
+                'sessions_remaining' => 0,
+                'title' => $title,
+                'user' => $renter,
+                'user_name' => $name !== '' ? $name : $renter?->mobile,
+            ];
+        }
+
+        $affected = LaneRental::query()
+            ->whereKey($rental->id)
+            ->where('sessions_remaining', '>', 0)
+            ->update([
+                'sessions_remaining' => DB::raw('sessions_remaining - 1'),
+                'updated_at' => now(),
+            ]);
+        $rental->refresh();
+
+        return [
+            'allowed' => $affected === 1,
+            'reason' => $affected === 1 ? GateTransitReason::Allowed : GateTransitReason::Exhausted,
+            'sessions_remaining' => (int) $rental->sessions_remaining,
+            'title' => $title,
+            'user' => $renter,
+            'user_name' => $name !== '' ? $name : $renter?->mobile,
+        ];
     }
 }

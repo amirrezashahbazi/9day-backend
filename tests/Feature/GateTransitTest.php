@@ -11,6 +11,9 @@ use App\Models\CourseField;
 use App\Models\CourseLevel;
 use App\Models\CourseType;
 use App\Models\GateTransit;
+use App\Models\Lane;
+use App\Models\LaneRental;
+use App\Models\LaneType;
 use App\Models\User;
 use App\Services\CourseEnrollmentService;
 use App\Services\GateTransitService;
@@ -190,5 +193,49 @@ class GateTransitTest extends TestCase
             1,
             CourseEnrollment::query()->where('user_id', $user->id)->where('status', EnrollmentStatus::Active)->count(),
         );
+    }
+
+    public function test_lane_rental_card_is_allowed_even_when_leading_zeros_match_another_user(): void
+    {
+        $renter = User::factory()->create([
+            'mobile' => '09120001111',
+            'first_name' => 'امیررضا',
+            'last_name' => 'شهبازی کارت',
+            'status' => UserStatus::Active,
+            'access_card_number' => '005957224',
+        ]);
+        User::factory()->create([
+            'mobile' => '09120002222',
+            'first_name' => 'ujgfccy',
+            'last_name' => 'khgyuig',
+            'status' => UserStatus::Active,
+            'access_card_number' => '0005966947',
+        ]);
+        $type = LaneType::query()->firstOrCreate(['name' => 'طولی']);
+        $lane = Lane::query()->create([
+            'lane_type_id' => $type->id,
+            'title' => 'لاین طولی استخر',
+            'fee' => 4500000,
+            'min_people' => 1,
+            'max_people' => 10,
+        ]);
+        $rental = LaneRental::query()->create([
+            'lane_id' => $lane->id,
+            'renter_user_id' => $renter->id,
+            'students_count' => 1,
+            'sessions_total' => 5,
+            'sessions_remaining' => 5,
+            'access_card_number' => '005966947',
+        ]);
+
+        $result = app(GateTransitService::class)->process(['enrollid' => '5966947'], '127.0.0.1');
+
+        $this->assertTrue($result['allowed']);
+        $this->assertSame('allowed', $result['reason']);
+        $this->assertSame(4, $result['sessions_remaining']);
+        $this->assertSame('لاین طولی استخر', $result['course_title']);
+        $this->assertSame($renter->id, $result['user_id']);
+        $this->assertSame('امیررضا شهبازی کارت', $result['user_name']);
+        $this->assertSame(4, $rental->fresh()->sessions_remaining);
     }
 }

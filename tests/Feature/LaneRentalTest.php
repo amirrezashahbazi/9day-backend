@@ -99,6 +99,38 @@ class LaneRentalTest extends TestCase
         $this->assertSame(1, Lane::query()->count());
     }
 
+    public function test_existing_user_keeps_their_password_when_a_lane_is_assigned(): void
+    {
+        $this->seed(SuperAdminSeeder::class);
+        $token = $this->staffToken();
+        $existing = User::factory()->create([
+            'mobile' => '09123330009',
+            'first_name' => 'کاربر',
+            'last_name' => 'موجود',
+            'password' => 'KeepMe-99',
+        ]);
+        $laneId = $this->withToken($token)->postJson('/api/admin/lanes', [
+            'title' => 'لاین موجود',
+            'type_name' => 'طولی',
+            'fee' => 1000,
+            'min_people' => 1,
+            'max_people' => 4,
+        ])->assertCreated()->json('lane.id');
+
+        $this->withToken($token)->postJson('/api/admin/lane-rentals', [
+            'mobile' => $existing->mobile,
+            'password' => '123456Aa@',
+            'lane_id' => $laneId,
+            'students_count' => 1,
+            'sessions_count' => 3,
+            'access_card_number' => '7001001',
+        ])->assertCreated();
+
+        $existing->refresh();
+        $this->assertTrue(Hash::check('KeepMe-99', $existing->password));
+        $this->assertSame('7001001', $existing->access_card_number);
+    }
+
     private function staffToken(): string
     {
         return $this->postJson('/api/auth/staff/login', [

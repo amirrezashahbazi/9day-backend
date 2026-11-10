@@ -43,7 +43,7 @@ class TimeSlotChargeController extends Controller
             ->groupBy('slot_label', 'period')
             ->orderBy('slot_label')
             ->get();
-        $charges = $query->latest('id')->paginate(20);
+        $charges = $query->latest('id')->paginate(min(500, max(1, (int) ($filters['per_page'] ?? 20))));
 
         return response()->json([
             'data' => TimeSlotChargeResource::collection($charges)->resolve(),

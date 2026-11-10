@@ -21,6 +21,7 @@ class IndexTimeSlotChargesRequest extends FormRequest
             'period' => ['nullable', Rule::enum(SlotPeriod::class)],
             'q' => ['nullable', 'string', 'max:80'],
             'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 }

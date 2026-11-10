@@ -23,7 +23,7 @@ class LaneRentalController extends Controller
         $term = trim((string) $request->query('q', ''));
         $laneId = $request->integer('lane_id');
 
-        $rentals = LaneRental::query()
+        $query = LaneRental::query()
             ->with(['lane.type', 'renter'])
             ->withCount('members')
             ->when($laneId > 0, fn ($query) => $query->where('lane_id', $laneId))
@@ -39,12 +39,19 @@ class LaneRentalController extends Controller
                         ->orWhereHas('lane', fn ($lane) => $lane->where('title', 'like', "%{$term}%"));
                 });
             })
-            ->latest('id')
-            ->limit(200)
-            ->get();
+            ->latest('id');
+
+        $perPage = min(500, max(1, (int) $request->query('per_page', 200)));
+        $rentals = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $rentals->map(fn (LaneRental $rental) => $this->payload($rental))->values(),
+            'data' => $rentals->getCollection()->map(fn (LaneRental $rental) => $this->payload($rental))->values(),
+            'meta' => [
+                'current_page' => $rentals->currentPage(),
+                'last_page' => $rentals->lastPage(),
+                'per_page' => $rentals->perPage(),
+                'total' => $rentals->total(),
+            ],
         ]);
     }
 

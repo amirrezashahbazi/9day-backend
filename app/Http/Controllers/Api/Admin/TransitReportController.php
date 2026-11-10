@@ -18,6 +18,7 @@ class TransitReportController extends Controller
             'q' => ['nullable', 'string', 'max:80'],
             'status' => ['nullable', 'in:allowed,denied'],
             'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ]);
 
         $query = GateTransit::query()->with(['user' => fn ($user) => $user->withTrashed()]);
@@ -54,7 +55,7 @@ class TransitReportController extends Controller
             ->selectRaw('count(*) as total, count(*) filter (where allowed) as allowed, count(*) filter (where not allowed) as denied')
             ->first();
 
-        $transits = $query->latest('id')->paginate(20);
+        $transits = $query->latest('id')->paginate(min(500, max(1, (int) ($filters['per_page'] ?? 20))));
 
         return response()->json([
             'data' => $transits->getCollection()->map(fn (GateTransit $transit) => $this->payload($transit))->values(),

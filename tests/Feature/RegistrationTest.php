@@ -4,6 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\UserStatus;
 use App\Models\City;
+use App\Models\Course;
+use App\Models\CourseField;
+use App\Models\CourseLevel;
+use App\Models\CourseType;
 use App\Models\Province;
 use App\Models\User;
 use App\Support\NationalCode;
@@ -134,6 +138,8 @@ class RegistrationTest extends TestCase
             ],
             2 => $this->contactStep(),
             3 => [
+                'course_id' => $this->courseId(),
+                'sessions_total' => 8,
                 'course_swimming' => true,
                 'course_water_polo' => false,
                 'course_diving' => false,
@@ -166,6 +172,34 @@ class RegistrationTest extends TestCase
         };
     }
 
+    private function courseId(): int
+    {
+        $type = CourseType::query()->firstOrCreate(['name' => 'آزاد']);
+        $field = CourseField::query()->firstOrCreate(['name' => 'شنا']);
+        $level = CourseLevel::query()->firstOrCreate(['name' => 'بزرگسال']);
+        $course = Course::query()->firstOrCreate(
+            ['title' => 'دوره تست ثبت‌نام'],
+            [
+                'course_type_id' => $type->id,
+                'course_field_id' => $field->id,
+                'course_level_id' => $level->id,
+                'gender' => 'female',
+                'fee' => 0,
+                'capacity' => 20,
+                'sessions_count' => 12,
+                'enrollments_count' => 0,
+                'min_age' => 18,
+                'max_age' => 60,
+                'registration_from' => '2026-01-01',
+                'registration_to' => '2026-12-31',
+                'starts_on' => '2026-01-01',
+                'ends_on' => '2026-12-31',
+            ],
+        );
+
+        return $course->id;
+    }
+
     private function contactStep(): array
     {
         $province = Province::query()->firstOrCreate(
@@ -180,6 +214,8 @@ class RegistrationTest extends TestCase
         return [
             'education_level' => 'bachelor',
             'landline' => '02112345678',
+            'emergency_phone_1' => '09121110000',
+            'emergency_phone_2' => '09121110001',
             'address' => 'خیابان آزادی، کوچه 12، پلاک 4',
             'province_id' => $province->id,
             'city_id' => $city->id,

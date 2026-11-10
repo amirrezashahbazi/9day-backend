@@ -8,6 +8,7 @@ enum UserRole: string
     case Admin = 'admin';
     case User = 'user';
     case Athlete = 'athlete';
+    case LaneRenter = 'lane_renter';
 
     /** @return list<self> */
     public static function members(): array

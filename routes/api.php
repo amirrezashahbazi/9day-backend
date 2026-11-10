@@ -11,9 +11,12 @@ use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSetting
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
 use App\Http\Controllers\Api\Admin\MobileVerificationController as AdminMobileVerificationController;
 use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
+use App\Http\Controllers\Api\Admin\LaneController as AdminLaneController;
+use App\Http\Controllers\Api\Admin\LaneRentalController as AdminLaneRentalController;
 use App\Http\Controllers\Api\Admin\TimeSlotChargeController as AdminTimeSlotChargeController;
 use App\Http\Controllers\Api\Admin\TimeSlotController as AdminTimeSlotController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\Rent\LaneMemberController as RentLaneMemberController;
 use App\Http\Controllers\Api\Auth\OtpController;
 use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\Auth\StaffAuthController;
@@ -37,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('locations', [LocationController::class, 'index']);
     Route::get('locations/cities/{city}/districts', [LocationController::class, 'districts'])->whereNumber('city');
     Route::get('courses/catalog', [CourseCatalogController::class, 'index']);
+    Route::get('registration/kin-lookup', [RegistrationController::class, 'lookupKin']);
     Route::get('registration', [RegistrationController::class, 'show']);
     Route::put('registration/steps/{step}', [RegistrationController::class, 'update'])->whereNumber('step');
 
@@ -65,6 +69,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('users/{user}/enrollments', [AdminCourseEnrollmentController::class, 'store'])->whereNumber('user');
         Route::get('site-settings', [AdminSiteSettingController::class, 'show']);
         Route::put('site-settings', [AdminSiteSettingController::class, 'update']);
+
+        Route::middleware('permission:lanes.manage')->group(function () {
+            Route::get('lane-types', [AdminLaneController::class, 'types']);
+            Route::get('lanes', [AdminLaneController::class, 'index']);
+            Route::post('lanes', [AdminLaneController::class, 'store']);
+            Route::post('lanes/bulk-delete', [AdminLaneController::class, 'destroyMany']);
+            Route::patch('lanes/{lane}', [AdminLaneController::class, 'update'])->whereNumber('lane');
+            Route::delete('lanes/{lane}', [AdminLaneController::class, 'destroy'])->whereNumber('lane');
+            Route::get('lane-rentals', [AdminLaneRentalController::class, 'index']);
+            Route::get('lane-renters/lookup', [AdminLaneRentalController::class, 'lookup']);
+            Route::post('lane-rentals', [AdminLaneRentalController::class, 'store']);
+        });
 
         Route::middleware('permission:courses.view')->group(function () {
             Route::get('courses', [AdminCourseController::class, 'index']);
@@ -95,5 +111,13 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->whereIn('taxonomyTable', ['course_types', 'course_fields', 'course_levels'])
                 ->whereNumber('id');
         });
+    });
+
+    Route::middleware('permission:lanes.members')->prefix('rent')->group(function () {
+        Route::get('lanes', [RentLaneMemberController::class, 'index']);
+        Route::post('lanes/{laneRental}/members', [RentLaneMemberController::class, 'store'])->whereNumber('laneRental');
+        Route::delete('lanes/{laneRental}/members/{user}', [RentLaneMemberController::class, 'destroy'])
+            ->whereNumber('laneRental')
+            ->whereNumber('user');
     });
 });

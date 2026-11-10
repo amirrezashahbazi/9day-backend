@@ -22,7 +22,7 @@ class CourseController extends Controller
         $filters = $request->validated();
 
         $courses = Course::query()
-            ->with(['type', 'field', 'level', 'banners'])
+            ->with(['type', 'field', 'level', 'banners', 'schedules'])
             ->when(filled($filters['created_from'] ?? null), fn ($query) => $query->whereDate('created_at', '>=', $filters['created_from']))
             ->when(filled($filters['created_to'] ?? null), fn ($query) => $query->whereDate('created_at', '<=', $filters['created_to']))
             ->when(filled($filters['gender'] ?? null), fn ($query) => $query->where('gender', $filters['gender']))
@@ -55,7 +55,7 @@ class CourseController extends Controller
 
     public function store(StoreCourseRequest $request): JsonResponse
     {
-        $data = $request->safe()->except(['banners', 'primary_index']);
+        $data = $request->safe()->except(['banners', 'primary_index', 'schedules']);
         $files = array_values(array_filter($request->file('banners', []) ?? [], fn ($file) => $file instanceof UploadedFile));
         $primaryIndex = (int) ($request->input('primary_index') ?? 0);
 
@@ -70,26 +70,27 @@ class CourseController extends Controller
                 array_map(fn (UploadedFile $file) => ['type' => 'new', 'file' => $file], $files),
                 $primaryIndex,
             );
+            $this->syncSchedules($course, $request->validated('schedules') ?? []);
 
             return $course;
         });
 
         return response()->json([
             'message' => 'دوره ایجاد شد.',
-            'course' => new CourseResource($course->load(['type', 'field', 'level', 'banners'])),
+            'course' => new CourseResource($course->load(['type', 'field', 'level', 'banners', 'schedules'])),
         ], 201);
     }
 
     public function show(Course $course): JsonResponse
     {
         return response()->json([
-            'course' => new CourseResource($course->load(['type', 'field', 'level', 'banners'])),
+            'course' => new CourseResource($course->load(['type', 'field', 'level', 'banners', 'schedules'])),
         ]);
     }
 
     public function update(UpdateCourseRequest $request, Course $course): JsonResponse
     {
-        $data = $request->safe()->except(['banners', 'keep_banner_ids', 'banner_order', 'primary_index']);
+        $data = $request->safe()->except(['banners', 'keep_banner_ids', 'banner_order', 'primary_index', 'schedules']);
         $files = array_values(array_filter($request->file('banners', []) ?? [], fn ($file) => $file instanceof UploadedFile));
         $order = $request->bannerOrder();
         $primaryIndex = (int) ($request->input('primary_index') ?? 0);
@@ -102,7 +103,7 @@ class CourseController extends Controller
             ];
         }
 
-        DB::transaction(function () use ($course, $data, $order, $files, $primaryIndex) {
+        DB::transaction(function () use ($request, $course, $data, $order, $files, $primaryIndex) {
             $course->update($data);
 
             $plan = [];
@@ -116,11 +117,12 @@ class CourseController extends Controller
             }
 
             $this->replaceBanners($course, $plan, $primaryIndex);
+            $this->syncSchedules($course, $request->validated('schedules') ?? []);
         });
 
         return response()->json([
             'message' => 'دوره به‌روزرسانی شد.',
-            'course' => new CourseResource($course->fresh()->load(['type', 'field', 'level', 'banners'])),
+            'course' => new CourseResource($course->fresh()->load(['type', 'field', 'level', 'banners', 'schedules'])),
         ]);
     }
 
@@ -201,6 +203,25 @@ class CourseController extends Controller
                 ]);
             }
         }
+    }
+
+    /** @param  list<array{weekday: string, starts_at: string, ends_at: string}>  $rows */
+    private function syncSchedules(Course $course, array $rows): void
+    {
+        $course->schedules()->delete();
+        if ($rows === []) {
+            return;
+        }
+
+        $now = now();
+        $course->schedules()->insert(array_map(fn (array $row) => [
+            'course_id' => $course->id,
+            'weekday' => $row['weekday'],
+            'starts_at' => $row['starts_at'],
+            'ends_at' => $row['ends_at'],
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $rows));
     }
 
     private function pageSize(array $filters): int

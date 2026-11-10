@@ -137,8 +137,13 @@ return new class extends Migration
     private function seedAccess(): void
     {
         $now = now();
+        $roleValues = $this->enumLabels('user_role');
+        $permissionValues = $this->enumLabels('permission_name');
 
         foreach (UserRole::cases() as $role) {
+            if (! in_array($role->value, $roleValues, true)) {
+                continue;
+            }
             DB::statement(
                 'INSERT INTO roles (name, created_at, updated_at) VALUES (?::user_role, ?, ?)',
                 [$role->value, $now, $now],
@@ -146,6 +151,9 @@ return new class extends Migration
         }
 
         foreach (Permission::cases() as $permission) {
+            if (! in_array($permission->value, $permissionValues, true)) {
+                continue;
+            }
             DB::statement(
                 'INSERT INTO permissions (name, created_at, updated_at) VALUES (?::permission_name, ?, ?)',
                 [$permission->value, $now, $now],
@@ -156,7 +164,13 @@ return new class extends Migration
         $permissionIds = DB::table('permissions')->pluck('id', 'name');
 
         foreach (UserRole::cases() as $role) {
+            if (! isset($roleIds[$role->value])) {
+                continue;
+            }
             foreach (AccessCatalog::permissionsFor($role) as $permission) {
+                if (! isset($permissionIds[$permission->value])) {
+                    continue;
+                }
                 DB::table('permission_role')->insert([
                     'role_id' => $roleIds[$role->value],
                     'permission_id' => $permissionIds[$permission->value],
@@ -165,6 +179,16 @@ return new class extends Migration
                 ]);
             }
         }
+    }
+
+    /** @return list<string> */
+    private function enumLabels(string $type): array
+    {
+        return DB::table('pg_enum')
+            ->join('pg_type', 'pg_type.oid', '=', 'pg_enum.enumtypid')
+            ->where('pg_type.typname', $type)
+            ->pluck('pg_enum.enumlabel')
+            ->all();
     }
 
     private function copyExistingRoles(): void

@@ -3,12 +3,15 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\Gender;
+use App\Http\Requests\Admin\Concerns\ValidatesCourseSchedule;
 use App\Models\AppSetting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreCourseRequest extends FormRequest
 {
+    use ValidatesCourseSchedule;
+
     public function authorize(): bool
     {
         return true;
@@ -27,7 +30,8 @@ class StoreCourseRequest extends FormRequest
             'registration_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:registration_from'],
             'starts_on' => ['nullable', 'date_format:Y-m-d'],
             'ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
-            'gender' => ['required', Rule::enum(Gender::class)],
+            'gender' => ['nullable', Rule::enum(Gender::class)],
+            ...$this->courseScheduleRules(),
             'min_age' => ['nullable', 'integer', 'min:1', 'max:100'],
             'max_age' => ['nullable', 'integer', 'min:1', 'max:100', 'gte:min_age'],
             'fee' => ['required', 'integer', 'min:0'],
@@ -48,7 +52,8 @@ class StoreCourseRequest extends FormRequest
             'course_field_id.required' => 'رشته را انتخاب کنید.',
             'course_level_id.required' => 'سطح را انتخاب کنید.',
             'title.required' => 'عنوان دوره الزامی است.',
-            'gender.required' => 'جنسیت را انتخاب کنید.',
+            'gender.enum' => 'جنسیت نامعتبر است.',
+            ...$this->courseScheduleMessages(),
             'fee.required' => 'هزینه دوره الزامی است.',
             'capacity.required' => 'ظرفیت الزامی است.',
             'sessions_count.required' => 'تعداد جلسات دوره الزامی است.',
@@ -72,6 +77,12 @@ class StoreCourseRequest extends FormRequest
         $this->merge([
             'title' => trim((string) $this->input('title')),
             ...$nullable,
+            ...$this->preparedCourseSchedule(),
         ]);
+    }
+
+    public function withValidator($validator): void
+    {
+        $this->assertScheduleOrder($validator);
     }
 }

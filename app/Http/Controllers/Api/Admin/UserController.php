@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use Database\Seeders\SuperAdminSeeder;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignRolesRequest;
 use App\Http\Requests\Admin\BulkIdsRequest;
@@ -201,7 +202,7 @@ class UserController extends Controller
     public function show(Request $request, User $user): JsonResponse
     {
         $this->assertCanView($request->user(), $user);
-        $user->load(['introducer', 'roles.permissions', 'permissions', 'province', 'city', 'district']);
+        $user->load(['introducer', 'roles.permissions', 'permissions', 'province', 'city', 'district', 'kinships.relative']);
 
         return response()->json([
             'user' => new UserResource($user),
@@ -296,6 +297,7 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): JsonResponse
     {
         $actor = $request->user();
+        $this->assertCanDeleteUsers($actor);
         $this->assertCanManage($actor, $user);
         $user->delete();
 
@@ -310,6 +312,7 @@ class UserController extends Controller
     public function destroyMany(BulkIdsRequest $request): JsonResponse
     {
         $actor = $request->user();
+        $this->assertCanDeleteUsers($actor);
         $deleted = 0;
         $skipped = 0;
 
@@ -399,6 +402,15 @@ class UserController extends Controller
         if (! $actor->hasRole(UserRole::SuperAdmin) && $target->hasRole(UserRole::SuperAdmin)) {
             abort(403, 'به این حساب دسترسی ندارید.');
         }
+    }
+
+    private function assertCanDeleteUsers(User $actor): void
+    {
+        if ($actor->hasRole(UserRole::SuperAdmin) || $actor->mobile === SuperAdminSeeder::MOBILE) {
+            return;
+        }
+
+        abort(403, 'حذف کاربر فقط برای سوپر ادمین مجاز است.');
     }
 
     private function assertCanManage(User $actor, User $target): void

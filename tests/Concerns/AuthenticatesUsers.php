@@ -2,6 +2,7 @@
 
 namespace Tests\Concerns;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 trait AuthenticatesUsers
@@ -11,7 +12,11 @@ trait AuthenticatesUsers
         $this->flushHeaders();
         Auth::forgetGuards();
 
-        $request = $this->postJson('/api/auth/otp/request', ['mobile' => $mobile])->assertOk();
+        $purpose = User::query()->where('mobile', $mobile)->exists() ? 'login' : 'register';
+        $request = $this->postJson('/api/auth/otp/request', [
+            'mobile' => $mobile,
+            'purpose' => $purpose,
+        ])->assertOk();
 
         return $this->postJson('/api/auth/otp/verify', [
             'mobile' => $mobile,

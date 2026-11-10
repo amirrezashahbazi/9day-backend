@@ -33,6 +33,7 @@ class CourseResource extends JsonResource
             'starts_on' => $this->starts_on?->toDateString(),
             'ends_on' => $this->ends_on?->toDateString(),
             'gender' => $this->gender?->value,
+            'schedules' => $this->whenLoaded('schedules', fn () => $this->schedulePayload()),
             'min_age' => $this->min_age,
             'max_age' => $this->max_age,
             'fee' => $this->fee,
@@ -48,5 +49,26 @@ class CourseResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /** @return list<array{id: int, weekday: string, starts_at: string, ends_at: string}> */
+    private function schedulePayload(): array
+    {
+        $order = ['sat' => 0, 'sun' => 1, 'mon' => 2, 'tue' => 3, 'wed' => 4, 'thu' => 5, 'fri' => 6];
+
+        return $this->schedules
+            ->sort(function ($left, $right) use ($order) {
+                $day = ($order[$left->weekday] ?? 9) <=> ($order[$right->weekday] ?? 9);
+
+                return $day !== 0 ? $day : strcmp((string) $left->starts_at, (string) $right->starts_at);
+            })
+            ->values()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'weekday' => $row->weekday,
+                'starts_at' => substr((string) $row->starts_at, 0, 5),
+                'ends_at' => substr((string) $row->ends_at, 0, 5),
+            ])
+            ->all();
     }
 }

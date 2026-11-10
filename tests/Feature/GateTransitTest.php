@@ -34,6 +34,12 @@ class GateTransitTest extends TestCase
             'course_level_id' => $level->id,
             'title' => 'دوره تست گیت',
             'gender' => 'female',
+            'min_age' => 7,
+            'max_age' => 60,
+            'registration_from' => '2026-01-01',
+            'registration_to' => '2026-12-31',
+            'starts_on' => '2026-01-01',
+            'ends_on' => '2026-12-31',
             'fee' => 1000,
             'capacity' => 200,
             'sessions_count' => $sessions,
@@ -106,8 +112,8 @@ class GateTransitTest extends TestCase
         $this->assertSame(3, $denied);
         $this->assertSame(0, (int) CourseEnrollment::query()->where('user_id', $user->id)->value('sessions_remaining'));
         $this->assertSame(
-            EnrollmentStatus::Exhausted->value,
-            CourseEnrollment::query()->where('user_id', $user->id)->value('status'),
+            EnrollmentStatus::Exhausted,
+            CourseEnrollment::query()->where('user_id', $user->id)->first()->status,
         );
         $this->assertSame(2, GateTransit::query()->where('allowed', true)->count());
         $this->assertSame(3, GateTransit::query()->where('allowed', false)->count());
@@ -155,8 +161,8 @@ class GateTransitTest extends TestCase
             ->assertJsonPath('sessions_remaining', 0);
 
         $this->assertSame(
-            EnrollmentStatus::Exhausted->value,
-            CourseEnrollment::query()->where('user_id', $user->id)->value('status'),
+            EnrollmentStatus::Exhausted,
+            CourseEnrollment::query()->where('user_id', $user->id)->first()->status,
         );
     }
 

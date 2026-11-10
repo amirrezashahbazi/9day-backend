@@ -22,7 +22,7 @@ class OtpTest extends TestCase
     {
         $mobile = '09121111111';
 
-        $this->postJson('/api/auth/otp/request', ['mobile' => $mobile])
+        $this->postJson('/api/auth/otp/request', ['mobile' => $mobile, 'purpose' => 'register'])
             ->assertOk()
             ->assertJsonStructure(['debug_code', 'expires_in']);
 
@@ -34,7 +34,10 @@ class OtpTest extends TestCase
     public function test_verify_creates_user_and_second_login_reuses_it(): void
     {
         $mobile = '09122222222';
-        $code = $this->postJson('/api/auth/otp/request', ['mobile' => $mobile])->json('debug_code');
+        $code = $this->postJson('/api/auth/otp/request', [
+            'mobile' => $mobile,
+            'purpose' => 'register',
+        ])->json('debug_code');
 
         $first = $this->postJson('/api/auth/otp/verify', [
             'mobile' => $mobile,
@@ -58,7 +61,10 @@ class OtpTest extends TestCase
     public function test_wrong_code_is_rejected(): void
     {
         $mobile = '09123333333';
-        $this->postJson('/api/auth/otp/request', ['mobile' => $mobile])->assertOk();
+        $this->postJson('/api/auth/otp/request', [
+            'mobile' => $mobile,
+            'purpose' => 'register',
+        ])->assertOk();
 
         $this->postJson('/api/auth/otp/verify', [
             'mobile' => $mobile,

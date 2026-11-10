@@ -71,6 +71,7 @@ class UserResource extends JsonResource
             'signed_at' => $this->signed_at?->toIso8601String(),
             'signature_name' => $this->signature_name,
             'introduced_by' => $this->introduced_by,
+            'first_degree_relative' => $this->relationLoaded('kinships') ? $this->firstDegreeRelative() : null,
             'introducer' => $this->relationLoaded('introducer') && $this->introducer ? [
                 'id' => $this->introducer->id,
                 'mobile' => $this->introducer->mobile,
@@ -78,6 +79,30 @@ class UserResource extends JsonResource
                 'last_name' => $this->introducer->last_name,
             ] : null,
             'created_at' => $this->created_at?->toIso8601String(),
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function firstDegreeRelative(): ?array
+    {
+        $kinship = $this->kinships->first();
+        if (! $kinship || ! $kinship->relative) {
+            return null;
+        }
+
+        $relation = $kinship->relation instanceof \App\Enums\KinshipRelation
+            ? $kinship->relation->value
+            : (string) $kinship->relation;
+
+        return [
+            'relation' => $relation,
+            'mobile' => $kinship->relative->mobile,
+            'relative' => [
+                'id' => $kinship->relative->id,
+                'first_name' => $kinship->relative->first_name,
+                'last_name' => $kinship->relative->last_name,
+                'mobile' => $kinship->relative->mobile,
+            ],
         ];
     }
 

@@ -53,6 +53,11 @@ class Course extends Model
         return $this->hasMany(CourseEnrollment::class);
     }
 
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(CourseSchedule::class);
+    }
+
     public function type(): BelongsTo
     {
         return $this->belongsTo(CourseType::class, 'course_type_id');

@@ -19,7 +19,16 @@ class RegistrationStepSaver
 
     public function save(User $user, int $step, Request $request): User
     {
-        $data = $request->safe()->except(['signature_confirmed', 'terms_accepted', 'course_id', 'sessions_total', 'federation_inquiry']);
+        $data = $request->safe()->except([
+            'signature_confirmed',
+            'terms_accepted',
+            'course_id',
+            'sessions_total',
+            'federation_inquiry',
+            'has_first_degree_relative',
+            'relative_mobile',
+            'relative_relation',
+        ]);
 
         if ($step === 2) {
             $city = City::query()->find($data['city_id'] ?? null);
@@ -93,6 +102,10 @@ class RegistrationStepSaver
 
         $user->save();
 
+        if ($step === 2) {
+            $this->syncKinship($user, $request);
+        }
+
         if ($step === 3 && $request->filled('course_id')) {
             $course = Course::query()->findOrFail((int) $request->input('course_id'));
             $sessions = $request->filled('sessions_total') ? (int) $request->input('sessions_total') : null;
@@ -105,7 +118,7 @@ class RegistrationStepSaver
             );
         }
 
-        $user->load(['province', 'city', 'district', 'introducer']);
+        $user->load(['province', 'city', 'district', 'introducer', 'kinships.relative']);
 
         Log::channel('registration')->info('Registration step saved', [
             'user_id' => $user->id,
@@ -116,5 +129,25 @@ class RegistrationStepSaver
         ]);
 
         return $user;
+    }
+
+    private function syncKinship(User $user, Request $request): void
+    {
+        if (! $request->boolean('has_first_degree_relative')) {
+            $user->kinships()->delete();
+
+            return;
+        }
+
+        $relative = User::query()
+            ->where('mobile', $request->string('relative_mobile')->toString())
+            ->firstOrFail();
+
+        $user->kinships()->where('relative_user_id', '!=', $relative->id)->delete();
+        $user->kinships()->updateOrCreate(
+            ['relative_user_id' => $relative->id],
+            ['relation' => $request->string('relative_relation')->toString()],
+        );
+        $user->load('kinships.relative');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Registration;
 use App\Http\Requests\Concerns\RejectsPersianDigits;
 use App\Enums\EducationLevel;
 use App\Enums\Gender;
+use App\Enums\KinshipRelation;
 use App\Enums\ReferralSource;
 use App\Enums\UserStatus;
 use App\Models\City;
@@ -134,6 +135,9 @@ class SaveRegistrationStepRequest extends FormRequest
                 'province_id' => ['required', 'integer', Rule::exists('provinces', 'id')->whereNull('deleted_at')],
                 'city_id' => ['required', 'integer', Rule::exists('cities', 'id')->whereNull('deleted_at')],
                 'district_id' => ['nullable', 'integer', Rule::exists('districts', 'id')->whereNull('deleted_at')],
+                'has_first_degree_relative' => ['sometimes', 'boolean'],
+                'relative_mobile' => [Rule::requiredIf(fn () => $this->boolean('has_first_degree_relative')), 'nullable', 'regex:/^09[0-9]{9}$/'],
+                'relative_relation' => [Rule::requiredIf(fn () => $this->boolean('has_first_degree_relative')), 'nullable', Rule::in(KinshipRelation::values())],
             ],
             3 => [
                 'course_id' => ['required', 'integer', Rule::exists('courses', 'id')->whereNull('deleted_at')],
@@ -194,6 +198,10 @@ class SaveRegistrationStepRequest extends FormRequest
             'city_id.required' => 'شهر را انتخاب کنید.',
             'city_id.exists' => 'شهر معتبر نیست.',
             'district_id.exists' => 'منطقه معتبر نیست.',
+            'relative_mobile.required' => 'موبایل خویشاوند را وارد کنید.',
+            'relative_mobile.regex' => 'موبایل خویشاوند باید ۱۱ رقم و با ۰۹ شروع شود.',
+            'relative_relation.required' => 'نسبت را انتخاب کنید.',
+            'relative_relation.in' => 'نسبت انتخاب‌شده مجاز نیست.',
             'course_id.required' => 'دوره را انتخاب کنید.',
             'course_id.exists' => 'دوره معتبر نیست.',
             'referral_source.required' => 'نحوه آشنایی را انتخاب کنید.',
@@ -233,6 +241,15 @@ class SaveRegistrationStepRequest extends FormRequest
                     $validator->errors()->add('city_id', 'شهر با استان انتخاب‌شده هم‌خوان نیست.');
                 } elseif ($city && $this->filled('district_id') && ! District::query()->where('city_id', $city->id)->whereKey($this->input('district_id'))->exists()) {
                     $validator->errors()->add('district_id', 'منطقه با شهر انتخاب‌شده هم‌خوان نیست.');
+                }
+
+                if ($this->boolean('has_first_degree_relative') && $this->filled('relative_mobile')) {
+                    $relative = User::query()->where('mobile', $this->string('relative_mobile')->toString())->first();
+                    if (! $relative) {
+                        $validator->errors()->add('relative_mobile', 'کاربری با این موبایل پیدا نشد.');
+                    } elseif ($relative->id === $this->subject()->id) {
+                        $validator->errors()->add('relative_mobile', 'نمی‌توانید خودتان را به عنوان خویشاوند ثبت کنید.');
+                    }
                 }
             }
 

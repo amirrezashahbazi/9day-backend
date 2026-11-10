@@ -20,6 +20,10 @@ class AccessCatalog
                 Permission::ReportsView,
                 Permission::CoursesView,
                 Permission::CoursesManage,
+                Permission::LanesManage,
+            ],
+            UserRole::LaneRenter => [
+                Permission::LanesMembers,
             ],
             UserRole::User, UserRole::Athlete => [
                 Permission::RegistrationManage,

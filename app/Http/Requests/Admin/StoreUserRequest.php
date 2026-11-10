@@ -44,7 +44,7 @@ class StoreUserRequest extends FormRequest
         $name = ['nullable', 'string', 'min:2', 'max:100', 'regex:/^[\p{Arabic}A-Za-z\s\x{200C}]+$/u'];
 
         return [
-            'mobile' => ['required', 'regex:/^09[0-9]{9}$/', 'unique:users,mobile'],
+            'mobile' => ['required', 'regex:/^09[0-9]{9}$/', Rule::unique('users', 'mobile')->whereNull('deleted_at')],
             'first_name' => $name,
             'last_name' => $name,
             'role' => ['nullable', Rule::in(['user', 'athlete', 'admin'])],

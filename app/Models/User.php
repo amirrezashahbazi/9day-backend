@@ -131,6 +131,11 @@ class User extends Authenticatable
         return $this->belongsTo(self::class, 'introduced_by');
     }
 
+    public function kinships(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(UserKinship::class);
+    }
+
     public function province(): BelongsTo
     {
         return $this->belongsTo(Province::class);
@@ -228,7 +233,7 @@ class User extends Authenticatable
         $this->loadMissing('roles');
         $owned = $this->roles->map(fn (Role $role) => $role->name instanceof UserRole ? $role->name->value : (string) $role->name);
 
-        foreach ([UserRole::SuperAdmin, UserRole::Admin, UserRole::Athlete, UserRole::User] as $role) {
+        foreach ([UserRole::SuperAdmin, UserRole::Admin, UserRole::LaneRenter, UserRole::Athlete, UserRole::User] as $role) {
             if ($owned->contains($role->value)) {
                 return $role->value;
             }

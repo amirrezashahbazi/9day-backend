@@ -30,6 +30,7 @@ class AdminTest extends TestCase
             'role' => 'admin',
             'password' => 'admin-pass-1',
             'grant_access' => true,
+            'skip_phone_verification' => true,
         ])->assertCreated()->assertJsonPath('user.role', 'admin')->assertJsonPath('user.status', 'active');
 
         $this->withToken($token)->getJson('/api/admin/users')
@@ -57,6 +58,7 @@ class AdminTest extends TestCase
             'mobile' => '09128888888',
             'first_name' => 'کیان',
             'grant_access' => true,
+            'skip_phone_verification' => true,
         ])->assertCreated()->assertJsonPath('user.status', 'active')->assertJsonPath('user.introduced_by', $admin->id);
 
         $this->withToken($token)->postJson('/api/admin/users', [
@@ -64,6 +66,7 @@ class AdminTest extends TestCase
             'role' => 'admin',
             'password' => 'another-admin',
             'grant_access' => true,
+            'skip_phone_verification' => true,
         ])->assertStatus(403);
 
         $userToken = $this->loginUser('09120000000');
@@ -83,6 +86,7 @@ class AdminTest extends TestCase
             'first_name' => 'آوا',
             'last_name' => 'رضایی',
             'grant_access' => true,
+            'skip_phone_verification' => true,
         ])->assertCreated();
 
         $this->withToken($token)->getJson('/api/admin/reports')

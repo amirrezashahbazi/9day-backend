@@ -12,4 +12,6 @@ enum Permission: string
     case RegistrationManage = 'registration.manage';
     case CoursesView = 'courses.view';
     case CoursesManage = 'courses.manage';
+    case LanesManage = 'lanes.manage';
+    case LanesMembers = 'lanes.members';
 }

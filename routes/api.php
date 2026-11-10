@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\CourseSettingController as AdminCourseSetting
 use App\Http\Controllers\Api\Admin\CourseTaxonomyController as AdminCourseTaxonomyController;
 use App\Http\Controllers\Api\Admin\MobileVerificationController as AdminMobileVerificationController;
 use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
+use App\Http\Controllers\Api\Admin\TimeSlotChargeController as AdminTimeSlotChargeController;
 use App\Http\Controllers\Api\Admin\TimeSlotController as AdminTimeSlotController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Auth\OtpController;
@@ -42,6 +43,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:panel.access')->prefix('admin')->group(function () {
         Route::get('stats', [AdminUserController::class, 'stats']);
         Route::get('reports', [AdminUserController::class, 'report']);
+        Route::get('time-slot-charges', [AdminTimeSlotChargeController::class, 'index']);
+        Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
+        Route::post('users/{user}/time-slot-charges', [AdminTimeSlotChargeController::class, 'store'])->whereNumber('user');
         Route::get('access-control-logs', [AdminAccessControlLogController::class, 'index']);
         Route::get('users', [AdminUserController::class, 'index']);
         Route::post('users', [AdminUserController::class, 'store']);
@@ -66,7 +70,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('courses', [AdminCourseController::class, 'index']);
             Route::get('courses/{course}', [AdminCourseController::class, 'show'])->whereNumber('course');
             Route::get('course-settings', [AdminCourseSettingController::class, 'show']);
-            Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
             Route::get('{taxonomyTable}', [AdminCourseTaxonomyController::class, 'index'])
                 ->whereIn('taxonomyTable', ['course_types', 'course_fields', 'course_levels']);
         });

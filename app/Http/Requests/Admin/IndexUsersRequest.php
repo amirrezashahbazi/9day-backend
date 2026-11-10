@@ -25,6 +25,7 @@ class IndexUsersRequest extends FormRequest
             'first_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
             'national_code' => ['nullable', 'string', new IranianNationalCode],
+            'mobile' => ['nullable', 'string', 'max:20'],
             'file_number' => ['nullable', 'string', 'max:20'],
             'registered_from' => ['nullable', 'date_format:Y-m-d'],
             'registered_to' => ['nullable', 'date_format:Y-m-d', Rule::when($this->filled('registered_from'), ['after_or_equal:registered_from'])],

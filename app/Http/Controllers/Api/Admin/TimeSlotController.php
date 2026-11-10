@@ -14,8 +14,10 @@ class TimeSlotController extends Controller
 {
     public function index(IndexTimeSlotsRequest $request): JsonResponse
     {
+        $filters = $request->validated();
         $slots = TimeSlot::query()
-            ->when(filled($request->validated('period')), fn ($query) => $query->where('period', $request->validated('period')))
+            ->when(filled($filters['period'] ?? null), fn ($query) => $query->where('period', $filters['period']))
+            ->when(filled($filters['gender'] ?? null), fn ($query) => $query->where('gender', $filters['gender']))
             ->orderBy('starts_at')
             ->orderBy('gender')
             ->get();

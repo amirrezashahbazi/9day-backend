@@ -24,6 +24,7 @@ class ReportUsersRequest extends FormRequest
             'first_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
             'national_code' => ['nullable', 'string', new IranianNationalCode],
+            'mobile' => ['nullable', 'string', 'max:20'],
             'file_number' => ['nullable', 'string', 'max:20'],
             'birth_from' => ['nullable', 'date_format:Y-m-d'],
             'birth_to' => ['nullable', 'date_format:Y-m-d', Rule::when($this->filled('birth_from'), ['after_or_equal:birth_from'])],

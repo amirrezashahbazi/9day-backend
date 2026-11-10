@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\Gender;
 use App\Enums\SlotPeriod;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,7 @@ class IndexTimeSlotsRequest extends FormRequest
     {
         return [
             'period' => ['nullable', Rule::enum(SlotPeriod::class)],
+            'gender' => ['nullable', Rule::enum(Gender::class)],
         ];
     }
 }

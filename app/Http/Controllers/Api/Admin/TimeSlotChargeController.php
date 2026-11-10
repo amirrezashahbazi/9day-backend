@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Enums\Gender;
 use App\Enums\SlotPeriod;
+use Illuminate\Support\Collection;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\IndexTimeSlotChargesRequest;
 use App\Http\Requests\Admin\StoreTimeSlotChargeRequest;
@@ -36,6 +37,12 @@ class TimeSlotChargeController extends Controller
             });
 
         $totalAmount = (int) (clone $query)->sum('amount');
+        $totalSessions = (int) (clone $query)->sum('sessions_count');
+        $slots = (clone $query)
+            ->selectRaw('slot_label, period, count(*) as charges, coalesce(sum(amount), 0) as amount, coalesce(sum(sessions_count), 0) as sessions')
+            ->groupBy('slot_label', 'period')
+            ->orderBy('slot_label')
+            ->get();
         $charges = $query->latest('id')->paginate(20);
 
         return response()->json([
@@ -46,6 +53,8 @@ class TimeSlotChargeController extends Controller
                 'per_page' => $charges->perPage(),
                 'total' => $charges->total(),
                 'total_amount' => $totalAmount,
+                'total_sessions' => $totalSessions,
+                'slots' => $this->slotSummaries($slots),
             ],
         ]);
     }
@@ -73,6 +82,23 @@ class TimeSlotChargeController extends Controller
             'message' => 'سانس برای کاربر شارژ شد.',
             'charge' => new TimeSlotChargeResource($charge),
         ], 201);
+    }
+
+    /** @param Collection<int, TimeSlotCharge> $slots
+     * @return list<array{slot_label: string, period: ?string, charges: int, amount: int, sessions: int}> */
+    private function slotSummaries(Collection $slots): array
+    {
+        return $slots->map(function (TimeSlotCharge $row) {
+            $period = $row->period instanceof SlotPeriod ? $row->period->value : $row->period;
+
+            return [
+                'slot_label' => (string) $row->slot_label,
+                'period' => is_string($period) ? $period : null,
+                'charges' => (int) $row->charges,
+                'amount' => (int) $row->amount,
+                'sessions' => (int) $row->sessions,
+            ];
+        })->values()->all();
     }
 
     private function label(TimeSlot $slot): string

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Course;
 use App\Models\GateTransit;
 use App\Models\Lane;
+use App\Models\LaneRental;
 use App\Models\TimeSlotCharge;
 use App\Models\User;
 use App\Support\NationalCode;
@@ -30,5 +31,7 @@ class PresentationSeederTest extends TestCase
         $this->assertGreaterThan(40, TimeSlotCharge::query()->count());
         $this->assertGreaterThan(200, GateTransit::query()->count());
         $this->assertGreaterThan(0, Lane::query()->where('title', 'like', '%ارائه')->count());
+        $this->assertGreaterThan(3, LaneRental::query()->count());
+        $this->assertGreaterThan(0, GateTransit::query()->whereNotNull('course_title')->count());
     }
 }

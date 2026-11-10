@@ -248,6 +248,26 @@ class PresentationSeeder extends Seeder
             if (! $renter) {
                 continue;
             }
+            $pastWhen = Carbon::now('Asia/Tehran')->subDays(24 - $index)->setTime(10, 15);
+            $past = LaneRental::query()->create([
+                'lane_id' => $lane->id,
+                'renter_user_id' => $renter->id,
+                'students_count' => $plan['members'],
+                'sessions_total' => $plan['sessions'],
+                'sessions_remaining' => 0,
+                'access_card_number' => '8801800'.($index + 1),
+                'created_by' => $staffId,
+            ]);
+            $past->forceFill(['created_at' => $pastWhen, 'updated_at' => $pastWhen])->save();
+            for ($member = 0; $member < min(3, $plan['members']) && isset($athletes[$cursor]); $member++, $cursor++) {
+                LaneRentalMember::query()->create([
+                    'lane_rental_id' => $past->id,
+                    'user_id' => $athletes[$cursor]->id,
+                    'created_by' => $staffId,
+                ]);
+            }
+
+            $when = Carbon::now('Asia/Tehran')->subDays(6 - $index)->setTime(9, 40);
             $rental = LaneRental::query()->create([
                 'lane_id' => $lane->id,
                 'renter_user_id' => $renter->id,
@@ -257,6 +277,7 @@ class PresentationSeeder extends Seeder
                 'access_card_number' => $renter->access_card_number,
                 'created_by' => $staffId,
             ]);
+            $rental->forceFill(['created_at' => $when, 'updated_at' => $when])->save();
             for ($member = 0; $member < $plan['members'] && isset($athletes[$cursor]); $member++, $cursor++) {
                 LaneRentalMember::query()->create([
                     'lane_rental_id' => $rental->id,
@@ -305,6 +326,7 @@ class PresentationSeeder extends Seeder
             GateTransitReason::UserBlocked,
             GateTransitReason::UnknownCard,
         ];
+        $courses = ['شنای آزاد', 'آموزش مبتدی', 'آموزش پیشرفته', 'آمادگی تیم'];
 
         for ($day = 0; $day < 30; $day++) {
             $count = 10 + (($day * 5) % 9);
@@ -315,6 +337,7 @@ class PresentationSeeder extends Seeder
                 $reason = $reasons[($day + $pass) % count($reasons)];
                 $user = $cardUsers[($day * 3 + $pass) % count($cardUsers)];
                 $unknown = $reason === GateTransitReason::UnknownCard;
+                $namedCourse = $reason === GateTransitReason::Allowed || $reason === GateTransitReason::Exhausted;
                 $when = Carbon::now('Asia/Tehran')->startOfDay()->subDays($day)->setTime(7 + (($pass * 2) % 13), ($pass * 11) % 60);
                 $transit = GateTransit::query()->create([
                     'user_id' => $unknown ? null : $user->id,
@@ -322,7 +345,7 @@ class PresentationSeeder extends Seeder
                     'allowed' => $reason === GateTransitReason::Allowed,
                     'reason' => $reason,
                     'sessions_remaining_after' => $reason === GateTransitReason::Allowed ? 3 + ($pass % 8) : 0,
-                    'course_title' => $reason === GateTransitReason::Allowed ? 'سانس آزاد' : null,
+                    'course_title' => $namedCourse ? $courses[($day + $pass) % count($courses)] : null,
                     'user_name' => $unknown ? null : trim($user->first_name.' '.$user->last_name),
                 ]);
                 $transit->forceFill(['created_at' => $when, 'updated_at' => $when])->save();

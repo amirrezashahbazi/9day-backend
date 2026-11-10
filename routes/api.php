@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingCont
 use App\Http\Controllers\Api\Admin\LaneController as AdminLaneController;
 use App\Http\Controllers\Api\Admin\LaneRentalController as AdminLaneRentalController;
 use App\Http\Controllers\Api\Admin\TimeSlotChargeController as AdminTimeSlotChargeController;
+use App\Http\Controllers\Api\Admin\TransitReportController as AdminTransitReportController;
 use App\Http\Controllers\Api\Admin\TimeSlotController as AdminTimeSlotController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\Rent\LaneMemberController as RentLaneMemberController;
@@ -48,6 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('stats', [AdminUserController::class, 'stats']);
         Route::get('stats/transits', [AdminUserController::class, 'transitStats']);
         Route::get('reports', [AdminUserController::class, 'report']);
+        Route::get('reports/transits', [AdminTransitReportController::class, 'index']);
+        Route::get('reports/lane-rentals', [AdminLaneRentalController::class, 'index']);
+        Route::get('reports/lane-rentals/{laneRental}', [AdminLaneRentalController::class, 'show'])->whereNumber('laneRental');
         Route::get('time-slot-charges', [AdminTimeSlotChargeController::class, 'index']);
         Route::get('time-slots', [AdminTimeSlotController::class, 'index']);
         Route::post('users/{user}/time-slot-charges', [AdminTimeSlotChargeController::class, 'store'])->whereNumber('user');

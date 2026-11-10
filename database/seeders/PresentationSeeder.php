@@ -85,9 +85,7 @@ class PresentationSeeder extends Seeder
             $gender = $index % 2 === 0 ? Gender::Male : Gender::Female;
             $first = $gender === Gender::Male ? $men[$index % count($men)] : $women[$index % count($women)];
             $status = match (true) {
-                $index < 36 => UserStatus::Active,
-                $index < 44 => UserStatus::Pending,
-                $index < 50 => UserStatus::Draft,
+                $index < 50 => UserStatus::Active,
                 default => UserStatus::Blocked,
             };
             $people[] = [

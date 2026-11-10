@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\GateTransit;
 use App\Models\Lane;
@@ -27,6 +28,8 @@ class PresentationSeederTest extends TestCase
         $this->assertSame($courses, Course::query()->count());
         $people = User::query()->where('mobile', 'like', '09191%')->get();
         $this->assertCount(54, $people);
+        $this->assertSame(0, $people->where('status', UserStatus::Pending)->count());
+        $this->assertSame(0, $people->where('status', UserStatus::Draft)->count());
         $this->assertTrue(NationalCode::isValid($people->first()->national_code));
         $this->assertGreaterThan(40, TimeSlotCharge::query()->count());
         $this->assertGreaterThan(200, GateTransit::query()->count());
